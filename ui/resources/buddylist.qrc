@@ -1,0 +1,49 @@
+<RCC>
+  <qresource prefix="avatars">
+    <file>resources/avatars/astronaut.jpg</file>
+    <file>resources/avatars/baseball.png</file>
+    <file>resources/avatars/butterfly.png</file>
+    <file>resources/avatars/cat-eye.jpg</file>
+    <file>resources/avatars/chess.jpg</file>
+    <file>resources/avatars/coffee.jpg</file>
+    <file>resources/avatars/dice.jpg</file>
+    <file>resources/avatars/energy-arc.jpg</file>
+    <file>resources/avatars/fish.jpg</file>
+    <file>resources/avatars/flake.jpg</file>
+    <file>resources/avatars/flower.jpg</file>
+    <file>resources/avatars/grapes.jpg</file>
+    <file>resources/avatars/guitar.jpg</file>
+    <file>resources/avatars/launch.jpg</file>
+    <file>resources/avatars/leaf.jpg</file>
+    <file>resources/avatars/lightning.jpg</file>
+    <file>resources/avatars/penguin.jpg</file>
+    <file>resources/avatars/puppy.jpg</file>
+    <file>resources/avatars/sky.jpg</file>
+    <file>resources/avatars/soccerball.png</file>
+    <file>resources/avatars/sunflower.jpg</file>
+    <file>resources/avatars/sunset.jpg</file>
+    <file>resources/avatars/tennis-ball.png</file>
+    <file>resources/avatars/yellow-rose.jpg</file>
+  </qresource>
+  <qresource prefix="misc">
+    <file>folder.png</file>
+    <file>yahoo-finance-quotes.png</file>
+  </qresource>
+  <qresource prefix="actions">
+    <file>list-add-user.png</file>
+  </qresource>
+  <qresource prefix="status">
+    <file>menu-user-online.png</file>
+    <file>menu-user-away-extended.png</file>
+    <file>menu-user-away.png</file>
+    <file>menu-user-busy.png</file>
+    <file>menu-user-invisible.png</file>
+    <file>menu-user-offline.png</file>
+    <file>user-online.png</file>
+    <file>user-away-extended.png</file>
+    <file>user-away.png</file>
+    <file>user-busy.png</file>
+    <file>user-invisible.png</file>
+    <file>user-offline.png</file>
+  </qresource>
+</RCC>

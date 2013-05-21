@@ -1,0 +1,35 @@
+QLabel {
+	color: rgb(255, 255, 255);
+}
+
+QLineEdit:selected {
+	color: green;
+}
+
+QCheckBox {
+	color: rgb(255, 255, 255);
+	selection-color: rgb(212, 57, 198);
+}
+
+QMainWindow {
+color: rgb(255, 255, 255);
+selection-color: rgb(212, 57, 198);
+selection-background-color: rgb(53, 14, 49); 
+}
+
+QLineEdit {
+    border-width: 2px;
+    padding: 1px;
+    background-color: rgb(123, 33, 115);
+    border-radius: 5px;
+}
+
+QMenuBar {
+color: rgb(255, 255, 255);
+background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgba(92, 24, 86, 255), stop:1 rgba(123, 33, 115, 255));
+}
+
+#centralwidget {
+color: rgb(255, 255, 255);
+background-color: rgb(123, 33, 115);
+}

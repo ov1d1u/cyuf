@@ -1,0 +1,5 @@
+<RCC>
+  <qresource prefix="login">
+    <file>sleeping.gif</file>
+  </qresource>
+</RCC>

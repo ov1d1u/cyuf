@@ -1,0 +1,61 @@
+<RCC>
+  <qresource prefix="avatars">
+    <file>resources/avatars/astronaut.jpg</file>
+    <file>resources/avatars/baseball.png</file>
+    <file>resources/avatars/butterfly.png</file>
+    <file>resources/avatars/cat-eye.jpg</file>
+    <file>resources/avatars/chess.jpg</file>
+    <file>resources/avatars/coffee.jpg</file>
+    <file>resources/avatars/dice.jpg</file>
+    <file>resources/avatars/energy-arc.jpg</file>
+    <file>resources/avatars/fish.jpg</file>
+    <file>resources/avatars/flake.jpg</file>
+    <file>resources/avatars/flower.jpg</file>
+    <file>resources/avatars/grapes.jpg</file>
+    <file>resources/avatars/guitar.jpg</file>
+    <file>resources/avatars/launch.jpg</file>
+    <file>resources/avatars/leaf.jpg</file>
+    <file>resources/avatars/lightning.jpg</file>
+    <file>resources/avatars/penguin.jpg</file>
+    <file>resources/avatars/puppy.jpg</file>
+    <file>resources/avatars/sky.jpg</file>
+    <file>resources/avatars/soccerball.png</file>
+    <file>resources/avatars/sunflower.jpg</file>
+    <file>resources/avatars/sunset.jpg</file>
+    <file>resources/avatars/tennis-ball.png</file>
+    <file>resources/avatars/yellow-rose.jpg</file>
+  </qresource>
+  <qresource prefix="chatWindow">
+    <file>resources/preferences-desktop-font.png</file>
+    <file>resources/mail-attachment.png</file>
+    <file>resources/arrow-right.png</file>
+    <file>resources/ksnapshot.png</file>
+    <file>resources/appointment-reminder.png</file>
+    <file>resources/view-presentation.png</file>
+    <file>resources/face-smile.png</file>
+    <file>resources/preferences-desktop-personal.png</file>
+    <file>resources/audio-headset.png</file>
+    <file>resources/camera-web.png</file>
+  </qresource>
+  <qresource prefix="misc">
+    <file>resources/folder.png</file>
+    <file>resources/yahoo-finance-quotes.png</file>
+  </qresource>
+  <qresource prefix="actions">
+    <file>resources/list-add-user.png</file>
+  </qresource>
+  <qresource prefix="status">
+    <file>resources/menu-user-online.png</file>
+    <file>resources/menu-user-away-extended.png</file>
+    <file>resources/menu-user-away.png</file>
+    <file>resources/menu-user-busy.png</file>
+    <file>resources/menu-user-invisible.png</file>
+    <file>resources/menu-user-offline.png</file>
+    <file>resources/user-online.png</file>
+    <file>resources/user-away-extended.png</file>
+    <file>resources/user-away.png</file>
+    <file>resources/user-busy.png</file>
+    <file>resources/user-invisible.png</file>
+    <file>resources/user-offline.png</file>
+  </qresource>
+</RCC>

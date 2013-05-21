@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ChatWindow</class>
+ <widget class="QMainWindow" name="ChatWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>504</width>
+    <height>418</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>- Cyuf</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="QTabWidget" name="tabWidget">
+      <property name="tabPosition">
+       <enum>QTabWidget::South</enum>
+      </property>
+      <property name="currentIndex">
+       <number>-1</number>
+      </property>
+      <property name="tabsClosable">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>504</width>
+     <height>19</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuConversation">
+    <property name="title">
+     <string>Conversation</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="menuEdit">
+    <property name="title">
+     <string>Edit</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="menuView">
+    <property name="title">
+     <string>View</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="menuActions">
+    <property name="title">
+     <string>Actions</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+   </widget>
+   <addaction name="menuConversation"/>
+   <addaction name="menuEdit"/>
+   <addaction name="menuView"/>
+   <addaction name="menuActions"/>
+   <addaction name="menuHelp"/>
+  </widget>
+  <action name="actionVideoCall">
+   <property name="icon">
+    <iconset resource="buddylist.qrc">
+     <normaloff>:/chatWindow/resources/camera-web.png</normaloff>:/chatWindow/resources/camera-web.png</iconset>
+   </property>
+   <property name="text">
+    <string>Video Call</string>
+   </property>
+  </action>
+  <action name="actionAudioCall">
+   <property name="icon">
+    <iconset resource="buddylist.qrc">
+     <normaloff>:/chatWindow/resources/audio-headset.png</normaloff>:/chatWindow/resources/audio-headset.png</iconset>
+   </property>
+   <property name="text">
+    <string>Audio Call</string>
+   </property>
+  </action>
+ </widget>
+ <resources>
+  <include location="buddylist.qrc"/>
+ </resources>
+ <connections/>
+</ui>
