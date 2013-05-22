@@ -47,14 +47,14 @@ class LoginWindow:
         yahoo_passwd = str(self.widget.yahooPasswd.text())
         ym.signin(yahoo_id, yahoo_passwd)
 
-    def is_connecting(self, emmusa):
+    def is_connecting(self, emussa):
         self.animate_connecting()
 
-    def connection_error(self, emmusa, e):
+    def connection_error(self, emussa, e):
         self.animate_sleeping()
         QMessageBox.critical(self.widget, "Connection error", "Connection error. Please check your internet connection and try again.")
 
-    def signin_error(self, emmusa, e):
+    def signin_error(self, emussa, e):
         self.animate_sleeping()
         QMessageBox.critical(self.widget, 
             "Sign in error",
@@ -62,7 +62,8 @@ class LoginWindow:
             "Error reported by the backend: '{0}'".format(e[0].message)
         )
 
-    def signin_done(self, emmusa, personal_info):
+    def signin_done(self, emussa, personal_info):
+        print '-- is invisible login', self.widget.invisibleCheckbox.isChecked()
         buddy = Buddy()
         buddy.yahoo_id = personal_info.yahoo_id
         buddy.nickname = personal_info.yahoo_id
