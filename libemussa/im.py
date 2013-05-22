@@ -9,7 +9,7 @@ class Buddy:
 	def __init__(self):
 		self.yahoo_id = ''		# buddy's Yahoo! ID
 		self.nickname = ''		# buddy's nickname
-		self.status   = None	# buddy Status
+		self.status   = Status()# buddy Status
 		self.ignored  = False	# buddy is on ignore list
 
 	def __repr__(self):

@@ -31,6 +31,7 @@ class EmussaSession:
         self.password = ''
         self.cbs = {}
         self.session_id = "\x00\x00\x00\x00"
+        self.is_invisible = False
         self.is_connected = False
         self.last_keepalive = 0
         self.y_cookie = self.t_cookie = ''
@@ -41,6 +42,12 @@ class EmussaSession:
         if self.cbs.has_key(callback_id):
             for func in self.cbs[callback_id]:
                 func(self, *args)
+
+    def _get_status_type(self):
+        if self.is_invisible:
+            return const.YAHOO_STATUS_INVISIBLE
+        else:
+            return const.YAHOO_STATUS_AVAILABLE
 
     def _connect(self, server, port):
         try:
@@ -116,7 +123,7 @@ class EmussaSession:
             if self.last_keepalive + KEEP_ALIVE_TIMEOUT < time.time() and self.is_connected:
                 y = YPacket()
                 y.service = const.YAHOO_SERVICE_KEEPALIVE
-                y.status = const.YAHOO_STATUS_AVAILABLE
+                y.status = self._get_status_type()
                 y.data['0'] = self.username
                 self._send(y)
                 self.last_keepalive = time.time()
@@ -157,7 +164,7 @@ class EmussaSession:
     def _request_auth(self):
         y = YPacket()
         y.service = const.YAHOO_SERVICE_AUTH
-        y.status = const.YAHOO_STATUS_AVAILABLE
+        y.status = self._get_status_type()
         y.data['1'] = self.username
         self._send(y)
 
@@ -248,7 +255,7 @@ class EmussaSession:
         hash = utils.yahoo_generate_hash(crumb + challenge)
         y = YPacket()
         y.service = const.YAHOO_SERVICE_AUTHRESP
-        y.status = const.YAHOO_STATUS_AVAILABLE
+        y.status = self._get_status_type()
         keyvals = {
         '0'   : self.username,
         '1'   : self.username,
@@ -371,7 +378,7 @@ class EmussaSession:
     def _send_message(self, msg):
         y = YPacket()
         y.service = const.YAHOO_SERVICE_MESSAGE
-        y.status = const.YAHOO_STATUS_AVAILABLE
+        y.status = self._get_status_type()
         keyvals = {
         '1'   : self.username,
         '5'   : msg.receiver,
@@ -387,7 +394,7 @@ class EmussaSession:
             is_not_available = '0'
         y = YPacket()
         y.service = const.YAHOO_SERVICE_Y6_STATUS_UPDATE
-        y.status = const.YAHOO_STATUS_AVAILABLE
+        y.status = self._get_status_type()
         y.data['10'] = str(status.code)
         y.data['19'] = status.message
         y.data['47'] = is_not_available
@@ -402,7 +409,7 @@ class EmussaSession:
     def _toggle_visible(self, invisible = False):
         y = YPacket()
         y.service = const.YAHOO_SERVICE_Y6_VISIBLE_TOGGLE
-        y.status = const.YAHOO_STATUS_AVAILABLE
+        y.status = self._get_status_type()
         if invisible:
             y.data['13'] = '2'
         else:

@@ -102,7 +102,11 @@ class CyBuddy(im.Buddy, QObject):
         if buddy:
             self.__dict__.update(buddy.__dict__)
 
-        self.status = CyStatus(self)
+        if buddy:
+            self.status = CyStatus(buddy.status, self)
+        else:
+            self.status = CyStatus(None, self)
+            
         self.avatar = CyAvatar(self)
 
         self.status.update.connect(self._emit_update)

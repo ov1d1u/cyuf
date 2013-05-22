@@ -89,7 +89,7 @@
            </property>
            <property name="icon">
             <iconset resource="buddylist.qrc">
-             <normaloff>:/status/resources/user-online.png</normaloff>:/status/resources/user-online.png</iconset>
+             <normaloff>:/status/resources/user-offline.png</normaloff>:/status/resources/user-offline.png</iconset>
            </property>
            <property name="iconSize">
             <size>

@@ -6,7 +6,7 @@ from PyQt4.QtGui import *
 import cyemussa
 from libemussa import callbacks as cb
 from libemussa import const
-from libemussa.im import Buddy
+from libemussa.im import Buddy, Status
 
 ym = cyemussa.CyEmussa.Instance()
 
@@ -22,9 +22,16 @@ class LoginWindow:
 
         # bind handlers
         self.widget.signInButton.clicked.connect(self.do_signin)
+        self.widget.invisibleCheckbox.stateChanged.connect(self.set_invisible_login)
 
         # wait for user input
         self.animate_sleeping()
+
+    def set_invisible_login(self, invisible):
+        if not invisible:
+            ym.is_invisible = False
+        else:
+            ym.is_invisible = True
 
     def animate_sleeping(self):
         for widget in self.widget.findChildren((QLineEdit, QCheckBox, QPushButton, QMenuBar)):
@@ -63,11 +70,16 @@ class LoginWindow:
         )
 
     def signin_done(self, emussa, personal_info):
-        print '-- is invisible login', self.widget.invisibleCheckbox.isChecked()
+        if self.widget.invisibleCheckbox.isChecked():
+            emussa.toggle_visibility(True)
         buddy = Buddy()
         buddy.yahoo_id = personal_info.yahoo_id
         buddy.nickname = personal_info.yahoo_id
-        buddy.status = const.YAHOO_STATUS_AVAILABLE
+
+        if emussa.is_invisible:
+            buddy.status.code = const.YAHOO_STATUS_INVISIBLE
+        else:
+            buddy.status.code = const.YAHOO_STATUS_AVAILABLE
         self.app.signed_in(cyemussa.CyBuddy(buddy))    # todo: change this into a signal
 
     def show(self):
