@@ -9,21 +9,21 @@ import cyemussa
 ym = cyemussa.CyEmussa.Instance()
 
 class ChatWidget(QWidget):
-    def __init__(self, parent, buddy):
+    def __init__(self, parent, cybuddy):
         super(ChatWidget, self).__init__()
         self.widget = uic.loadUi('ui/chatwidget.ui')
         self.parent_window = parent
         self.me = parent.app.me
-        self.buddy = buddy
+        self.cybuddy = cybuddy
         self.typing = False
 
         self.widget.textEdit.keyPressEvent = self._writing_message
         self.widget.sendButton.clicked.connect(self._send_message)
         self.widget.myAvatar.setPixmap(self.me.avatar.image)
-        self.widget.hisAvatar.setPixmap(self.buddy.avatar.image)
+        self.widget.hisAvatar.setPixmap(self.cybuddy.avatar.image)
 
         self.widget.messagesView.setHtml('<i>Conversation started</i><br/>', QUrl())
-        self.buddy.update.connect(self._update_buddy)
+        self.cybuddy.update.connect(self._update_buddy)
         self._update_buddy()
 
     def _writing_message(self, e):
@@ -37,7 +37,7 @@ class ChatWidget(QWidget):
     def _send_message(self):
         message = self.widget.textEdit.toPlainText()
         self.widget.textEdit.setDocument(QTextDocument())
-        ym.send_message(self.buddy.yahoo_id, str(message))
+        ym.send_message(self.cybuddy.yahoo_id, str(message))
         self._new_message(self.me.yahoo_id, message)
         self.typing = False
 
@@ -46,12 +46,12 @@ class ChatWidget(QWidget):
         self.widget.messagesView.page().mainFrame().evaluateJavaScript('document.body.innerHTML += "{0}<br/>"'.format(htmltext))
 
     def _update_buddy(self):
-        self.widget.contactName.setText(self.buddy.yahoo_id)
+        self.widget.contactName.setText(self.cybuddy.yahoo_id)
 
-        if self.buddy.status.online:
-            if self.buddy.status.idle_time:
+        if self.cybuddy.status.online:
+            if self.cybuddy.status.idle_time:
                 self.widget.contactStatus.setPixmap(QPixmap(":status/resources/user-away.png"))
-            elif self.buddy.status.code == YAHOO_STATUS_BUSY:
+            elif self.cybuddy.status.code == YAHOO_STATUS_BUSY:
                 self.widget.contactStatus.setPixmap(QPixmap(":status/resources/user-busy.png"))
             else:
                 self.widget.contactStatus.setPixmap(QPixmap(":status/resources/user-online.png"))

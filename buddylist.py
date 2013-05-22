@@ -12,11 +12,11 @@ import buddylist_rc, cyemussa, insider, chatwindow
 ym = cyemussa.CyEmussa.Instance()
 
 class BuddyItem(QTreeWidgetItem):
-    def __init__(self, buddy, compact = True):
+    def __init__(self, cybuddy, compact = True):
         super(BuddyItem, self).__init__()
         self.compact = compact
-        self._buddy = buddy
-        self._buddy.update.connect(self._update)
+        self._cybuddy = cybuddy
+        self._cybuddy.update.connect(self._update)
         self._initWidget()
         self._update()
 
@@ -33,10 +33,10 @@ class BuddyItem(QTreeWidgetItem):
         self.icon_holder.setPixmap(QPixmap(":status/resources/user-offline.png"))
         self.icon_holder.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Expanding)
 
-        # buddy label
-        self.buddyname = QLabel(self._buddy.yahoo_id)
+        # cybuddy label
+        self.buddyname = QLabel(self._cybuddy.yahoo_id)
 
-        # buddy status text
+        # cybuddy status text
         self.status_label = QLabel()
         self.status_label.setText(self._get_link_from_status())
         self.status_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Expanding)
@@ -79,7 +79,7 @@ class BuddyItem(QTreeWidgetItem):
         sep = ''
         if self.compact:
             sep = ' - '
-        statusmsg = self._buddy.status.message
+        statusmsg = self._cybuddy.status.message
         if 'http://' in statusmsg:
             href = statusmsg[statusmsg.index('http://'):].split(' ', 1)[0]
             statusmsg = statusmsg.replace(href, '').lstrip().rstrip()
@@ -93,21 +93,21 @@ class BuddyItem(QTreeWidgetItem):
             statusmsg = statusmsg.replace(href, '').lstrip().rstrip()
             return '<font color="#8C8C8C">{0}<a href="http://{1}">{2}</a></font>'.format(sep, href, statusmsg)
         else:
-            return '<font color="#8C8C8C">{0}{1}</font>'.format(sep, self._buddy.status.message)
+            return '<font color="#8C8C8C">{0}{1}</font>'.format(sep, self._cybuddy.status.message)
 
     def _update(self):
-        #print 'buddy updated:', self._buddy.status.online
+        #print 'cybuddy updated:', self._cybuddy.status.online
         self._setAvatar()
-        self.buddyname.setText(self._buddy.yahoo_id)
+        self.buddyname.setText(self._cybuddy.yahoo_id)
 
         self.status_label.setText('')
-        if self._buddy.status.message:
+        if self._cybuddy.status.message:
             self.status_label.setText(self._get_link_from_status())
 
-        if self._buddy.status.online:
-            if self._buddy.status.idle_time:
+        if self._cybuddy.status.online:
+            if self._cybuddy.status.idle_time:
                 self.icon_holder.setPixmap(QPixmap(":status/resources/user-away.png"))
-            elif self._buddy.status.code == YAHOO_STATUS_BUSY:
+            elif self._cybuddy.status.code == YAHOO_STATUS_BUSY:
                 self.icon_holder.setPixmap(QPixmap(":status/resources/user-busy.png"))
             else:
                 self.icon_holder.setPixmap(QPixmap(":status/resources/user-online.png"))
@@ -118,7 +118,7 @@ class BuddyItem(QTreeWidgetItem):
         size = 16
         if not self.compact:
             size = 32
-        self.avatar_holder.setPixmap(self._buddy.avatar.scaled(size))
+        self.avatar_holder.setPixmap(self._cybuddy.avatar.scaled(size))
 
     @property
     def widget(self):
@@ -130,12 +130,12 @@ class BuddyItem(QTreeWidgetItem):
          raise AttributeError('Why are you setting the widget from outside?')
 
     @property
-    def buddy(self):
-        return self._buddy
+    def cybuddy(self):
+        return self._cybuddy
 
-    @buddy.setter
-    def buddy(self, buddy):
-        self._buddy = buddy
+    @cybuddy.setter
+    def cybuddy(self, cybuddy):
+        self._cybuddy = cybuddy
         self._update()
 
 
@@ -235,7 +235,7 @@ class BuddyList(QWidget):
 
     def _build_toolbar(self):
         self.toolbar = QToolBar(self)
-        self.toolbar.addAction(QIcon(QPixmap(":actions/resources/list-add-user.png")), 'Add buddy')
+        self.toolbar.addAction(QIcon(QPixmap(":actions/resources/list-add-user.png")), 'Add cybuddy')
         self.searchField = QLineEdit()
         self.toolbar.setIconSize(QSize(16, 16))
         self.widget.tbContainer.addWidget(self.toolbar)
@@ -275,6 +275,40 @@ class BuddyList(QWidget):
         ym.set_status(self.app.me.status.code, self.app.me.status.message)
         self.widget.avatarButton.setIcon(QIcon(self.app.me.avatar.image))
 
+    def _get_buddy(self, yahoo_id):
+        if self.buddy_items.has_key(yahoo_id):
+            return self.buddy_items[yahoo_id]._cybuddy
+        # create a new cybuddy
+        cybuddy = cyemussa.CyBuddy()
+        cybuddy.yahoo_id = yahoo_id
+        cybuddy.nickname = yahoo_id
+        cybuddy.status = cyemussa.CyStatus()
+        return cybuddy
+
+    def _create_chat_for_buddy(self, cybuddy, focus_chat = False):
+        for win in self.chat_windows:
+            for chat in win.chatwidgets:
+                if chat.cybuddy.yahoo_id == cybuddy.yahoo_id:
+                    if focus_chat:
+                        win.focus_chat(cybuddy)
+                    return chat
+
+        # no already opened chat, open a new one
+        cybuddy = self._get_buddy(cybuddy.yahoo_id)
+        if not len(self.chat_windows):
+            win = chatwindow.ChatWindow(self.app, cybuddy)
+            win.widget.closeEvent = self._chatwindow_closed(win)
+            self.chat_windows.append(win)
+        else:
+            win = self.chat_windows[0]
+            win.new_chat(cybuddy)
+        return win.chatwidgets[-1:][0]
+
+    def _chatwindow_closed(self, window):
+        def event_handler(event):
+            self.chat_windows.remove(window)
+        return event_handler
+
     def show_insider(self):
         self.i = insider.Insider(
             {'T' : ym.t_cookie,
@@ -300,35 +334,17 @@ class BuddyList(QWidget):
         self.widget.buddyTree.setItemWidget(item, 0, item.widget)
         self.buddy_items[buddy.yahoo_id] = item
 
-    def update_buddy(self, emussa, buddy):
+    def update_buddy(self, emussa, cybuddy):
         for yid in self.buddy_items:
-            if buddy.yahoo_id == yid:
+            if cybuddy.yahoo_id == yid:
                 item = self.buddy_items[yid]
-                item.buddy.status = buddy.status
+                item.cybuddy.status = cybuddy.status
 
     def received_message(self, emussa, personal_msg):
         message = cyemussa.CyPersonalMessage(personal_msg)
-        # find a opened chat with message's sender
-        for win in self.chat_windows:
-            for chat in win.chatwidgets:
-                if chat.buddy.yahoo_id == message.sender:
-                    chat.income_message(message)
-                    return
-
-        # no already opened chat, open a new one
-        if self.buddy_items.has_key(message.sender):
-            # buddy already exists, use it
-            buddy = buddy_items[message.sender].buddy
-        else:
-            # create a new buddy
-            buddy = cyemussa.CyBuddy()
-            buddy.yahoo_id = message.sender
-            buddy.nickname = message.sender
-            buddy.status = cyemussa.CyStatus()
-
-        win = chatwindow.ChatWindow(self.app, buddy)
-        self.chat_windows.append(win)
+        cybuddy = self._get_buddy(personal_msg.sender)
+        chat = self._create_chat_for_buddy(cybuddy)
+        chat.income_message(message)
 
     def btree_open_chat(self, buddy_item):
-        win = chatwindow.ChatWindow(self.app, buddy_item._buddy)
-        self.chat_windows.append(win)
+        chat = self._create_chat_for_buddy(buddy_item._cybuddy, True)

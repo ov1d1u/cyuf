@@ -178,7 +178,7 @@
          <widget class="QWidget" name="widget" native="true">
           <layout class="QVBoxLayout" name="verticalLayout_3">
            <item>
-            <widget class="QCheckBox" name="checkBox">
+            <widget class="QCheckBox" name="invisibleCheckbox">
              <property name="text">
               <string>Remember my ID and password</string>
              </property>

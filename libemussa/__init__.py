@@ -1,4 +1,4 @@
-import socket, urllib, threading
+import socket, urllib, threading, time
 import Queue
 
 from ypacket import YPacket, InvalidPacket
@@ -10,6 +10,7 @@ HOST = 'scsa.msg.yahoo.com'
 PORT = 5050
 CLIENT_BUILD_ID = '4194239'
 CLIENT_VERSION = '9.0.0.2162'
+KEEP_ALIVE_TIMEOUT = 30
 
 # init the debugger
 debug = Debugger()
@@ -31,6 +32,7 @@ class EmussaSession:
         self.cbs = {}
         self.session_id = "\x00\x00\x00\x00"
         self.is_connected = False
+        self.last_keepalive = 0
         self.y_cookie = self.t_cookie = ''
         self.debug = debug
         self.debug.info('Hi, libemussa here!')
@@ -83,6 +85,7 @@ class EmussaSession:
             #except:
             #    debug.warning('Error while reading data packet')
         debug.info('Listener thread ended.')
+        self.is_connected = False
 
     def _sender(self):
         if not self.is_connected:
@@ -105,6 +108,18 @@ class EmussaSession:
             self._connect(HOST, PORT)
             threading.Thread(target=self._sender).start()
         queue.put(y)
+
+    def _keepalive(self):
+        self.last_keepalive = time.time()
+        while self.is_connected:
+            time.sleep(1)
+            if self.last_keepalive + KEEP_ALIVE_TIMEOUT < time.time() and self.is_connected:
+                y = YPacket()
+                y.service = const.YAHOO_SERVICE_KEEPALIVE
+                y.status = const.YAHOO_STATUS_AVAILABLE
+                y.data['0'] = self.username
+                self._send(y)
+                self.last_keepalive = time.time()
 
     def _process_packet(self, y):
         if y.sid != "\x00\x00\x00\x00":
@@ -258,6 +273,9 @@ class EmussaSession:
         pi.surname = data['254']
         pi.country = data['470']
         self._callback(EMUSSA_CALLBACK_SELFCONTACT, pi)
+
+        debug.info('Starting keepalive thread')
+        threading.Thread(target=self._keepalive).start()
 
     def _received_buddylist(self, data):
         debug.info('Received buddylist')
