@@ -51,6 +51,7 @@ class BuddyItem(QTreeWidgetItem):
             self.horizontal_layout = QHBoxLayout()
 
         self.layout.addWidget(self.avatar_holder)
+        self._setAvatar()
 
         if self.compact:
             self.layout.addWidget(self.icon_holder)
@@ -256,7 +257,7 @@ class BuddyList(QWidget):
             self.app.me.status.code = avlbcode
 
         if avlbcode == YAHOO_STATUS_INVISIBLE:
-            self.customStatusCombo.lineEdit().setText('')
+            self.widget.customStatusCombo.lineEdit().setText('')
 
     def _set_status_text(self, text):
         if text and self.app.me.status.code == YAHOO_STATUS_INVISIBLE:
@@ -306,6 +307,7 @@ class BuddyList(QWidget):
 
     def _chatwindow_closed(self, window):
         def event_handler(event):
+            window.close_all_tabs()
             self.chat_windows.remove(window)
         return event_handler
 
@@ -342,9 +344,13 @@ class BuddyList(QWidget):
 
     def received_message(self, emussa, personal_msg):
         message = cyemussa.CyPersonalMessage(personal_msg)
-        cybuddy = self._get_buddy(personal_msg.sender)
+        if personal_msg.sender:
+            cybuddy = self._get_buddy(personal_msg.sender)
+        else:
+            # we sent this message, from another device
+            cybuddy = self._get_buddy(personal_msg.receiver)
         chat = self._create_chat_for_buddy(cybuddy)
-        chat.income_message(message)
+        chat.receive_message(message)
 
     def btree_open_chat(self, buddy_item):
         chat = self._create_chat_for_buddy(buddy_item._cybuddy, True)

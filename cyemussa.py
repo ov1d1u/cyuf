@@ -28,10 +28,14 @@ class CyEmussa(QThread, EmussaSession):
     def handle_signal(self, callback_id, args):
         if self.cbs.has_key(callback_id):
             for func in self.cbs[callback_id]:
-                if len(args):
-                    func(self, *args)
-                else:
-                    func(self)
+                try:
+                    if len(args):
+                        func(self, *args)
+                    else:
+                        func(self)
+                except Exception, e:
+                    print 'CyEmussa: Error calling callback: {0}'.format(func)
+                    print 'CyEmussa: Exception: {0}'.format(e)
 
     def _callback(self, callback_id, *args):
         if len(args):

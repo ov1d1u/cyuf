@@ -1,0 +1,44 @@
+body {
+  font-family: Verdana,Arial;
+  font-size: 11px;
+  margin: 0px 0px 5px 0px;
+}
+
+img {
+  vertical-align: middle;
+}
+
+.infobox {
+  background-color: #f0f6fb;
+  border-bottom: 1px solid #c1cdd7;
+  padding: 10px;
+  vertical-align: middle;
+}
+
+.message {
+  margin-top: 2px;
+}
+
+.message_in {
+  margin-left: 5px;
+}
+
+.message_in .yahoo_id {
+  font-weight: bold;
+  color: #333399;
+}
+
+.message_out {
+  margin-left: 5px;
+}
+
+.message_out .yahoo_id {
+  font-weight: bold;
+  color: #808080;
+}
+
+.typing {
+  margin-left: 5px;
+  color: #333399;
+  font-style:italic;
+}

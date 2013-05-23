@@ -33,11 +33,18 @@ class ChatWindow(QObject):
         for _chat in self.chatwidgets:
             if self.widget.tabWidget.widget(index) == _chat.widget:
                 chat = _chat
+        chat.close()
         self.chatwidgets.remove(chat)
         self.widget.tabWidget.removeTab(index)
 
         if not len(self.chatwidgets):
             self.widget.close()
+
+    def close_all_tabs(self):
+        index = 0
+        for chat in self.chatwidgets:
+            self.close_tab(index)
+            index += 1
 
     def focus_chat(self, cybuddy):
         for chat in self.chatwidgets:

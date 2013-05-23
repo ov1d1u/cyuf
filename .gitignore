@@ -1,4 +1,4 @@
-libemussa/ 
+libemussa/
 *.py[cod]
 
 # C extensions

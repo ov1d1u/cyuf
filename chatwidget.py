@@ -4,7 +4,8 @@ from PyQt4.QtGui import *
 from PyQt4.QtNetwork  import *
 
 from libemussa.const import *
-import cyemussa
+from libemussa import callbacks as cb
+import cyemussa, util
 
 ym = cyemussa.CyEmussa.Instance()
 
@@ -15,35 +16,47 @@ class ChatWidget(QWidget):
         self.parent_window = parent
         self.me = parent.app.me
         self.cybuddy = cybuddy
-        self.typing = False
+        self.typingTimer = None
+        self.is_ready = False
 
+        ym.register_callback(cb.EMUSSA_CALLBACK_TYPING_NOTIFY, self._typing)
         self.widget.textEdit.keyPressEvent = self._writing_message
         self.widget.sendButton.clicked.connect(self._send_message)
         self.widget.myAvatar.setPixmap(self.me.avatar.image)
         self.widget.hisAvatar.setPixmap(self.cybuddy.avatar.image)
 
-        self.widget.messagesView.setHtml('<i>Conversation started</i><br/>', QUrl())
+        self.widget.messagesView.setUrl(QUrl('ui/resources/html/chat/index.html'))
+        self.widget.messagesView.loadFinished.connect(self._document_ready)
         self.cybuddy.update.connect(self._update_buddy)
         self._update_buddy()
 
-    def _writing_message(self, e):
-        if e.key() == Qt.Key_Return or e.key() == Qt.Key_Enter:
-            self.widget.sendButton.click()
-        else:
-            QTextEdit.keyPressEvent(self.widget.textEdit, e)
-            if not self.typing:
-                self.typing = True
+    def _javascript(self, function, *args):
+        # if the document is not ready, wait a while until we start calling JS functions on it
+        dieTime = QTime.currentTime().addMSecs(100)
+        while QTime.currentTime() < dieTime and not self.is_ready:
+            QCoreApplication.processEvents(QEventLoop.AllEvents, 100)
+            dieTime = QTime.currentTime().addMSecs(100)
+        arguments_list = []
+        for arg in args:
+            jsarg = str(arg).replace("'", "\\'")
+            arguments_list.append("'" + jsarg + "'")
+        jscode = function + "(" + ", ".join(arguments_list) + ")"
+        self.widget.messagesView.page().mainFrame().evaluateJavaScript(jscode)
 
-    def _send_message(self):
-        message = self.widget.textEdit.toPlainText()
-        self.widget.textEdit.setDocument(QTextDocument())
-        ym.send_message(self.cybuddy.yahoo_id, str(message))
-        self._new_message(self.me.yahoo_id, message)
-        self.typing = False
-
-    def _new_message(self, sender, message):
-        htmltext = '<b>{0}</b>: {1}'.format(sender, message)
-        self.widget.messagesView.page().mainFrame().evaluateJavaScript('document.body.innerHTML += "{0}<br/>"'.format(htmltext))
+    def _document_ready(self):
+        self.is_ready = True
+        if self.me.status.code == YAHOO_STATUS_INVISIBLE:
+            pixmap = QPixmap(":status/resources/user-invisible.png")
+            self._add_info('You appear offline to ' + 
+                '<b>' + self.cybuddy.yahoo_id + '</b>',
+                pixmap
+            )
+        elif not self.cybuddy.status.online:
+            pixmap = QPixmap(":status/resources/user-offline.png")
+            self._add_info('<b>' + self.cybuddy.yahoo_id + '</b>' + 
+                ' seems to be offline and will receive your messages next time when he/she logs in.',
+                pixmap
+            )
 
     def _update_buddy(self):
         self.widget.contactName.setText(self.cybuddy.yahoo_id)
@@ -58,5 +71,67 @@ class ChatWidget(QWidget):
         else:
             self.widget.contactStatus.setPixmap(QPixmap(":status/resources/user-offline.png"))
 
-    def income_message(self, cymessage):
-        self._new_message(cymessage.sender, cymessage.message)
+    def _writing_message(self, e):
+        if e.key() == Qt.Key_Return or e.key() == Qt.Key_Enter:
+            self.widget.sendButton.click()
+            ym.send_typing(self.cybuddy.yahoo_id, False)
+            self.killTimer(self.typingTimer)
+            self.typingTimer = None
+        else:
+            QTextEdit.keyPressEvent(self.widget.textEdit, e)
+            if e.key() > Qt.Key_0 and e.key() < Qt.Key_Z:
+                if self.typingTimer:
+                    self.killTimer(self.typingTimer)
+                else:
+                    ym.send_typing(self.cybuddy.yahoo_id, True)
+                self.typingTimer = self.startTimer(5000)
+
+    def _typing(self, cyemussa, tn):
+        sender = tn.sender
+        if not sender:
+            # we are typing this from somewhere else
+            sender = self.me.yahoo_id
+        if not sender == self.me.yahoo_id and not sender == self.cybuddy.yahoo_id:
+            return
+        if tn.status:
+            self._javascript('start_typing', sender)
+        else:
+            self._javascript('stop_typing')
+
+    def _add_info(self, text, pixmap = None):
+        image = None
+        if pixmap:
+            image = util.pixmap_to_base64(pixmap)
+
+        text = util.sanitize_html(text)
+        if image:
+            self._javascript('add_info', text, image)
+        else:
+            self._javascript('add_info', text)
+
+    def _send_message(self):
+        message = util.sanitize_html(self.widget.textEdit.toPlainText())
+        self.widget.textEdit.setDocument(QTextDocument())
+        ym.send_message(self.cybuddy.yahoo_id, str(message))
+        self._javascript('message_out', self.me.yahoo_id, message)
+
+    def timerEvent(self, event):
+        ym.send_typing(self.cybuddy.yahoo_id, False)
+        if self.typingTimer:
+            self.killTimer(self.typingTimer)
+            self.typingTimer = None
+
+    def close(self):
+        # called by parent when the chat is closing
+        ym.unregister_callback(cb.EMUSSA_CALLBACK_TYPING_NOTIFY, self._typing)
+        self.widget.sendButton.clicked.disconnect(self._send_message)
+        self.widget.messagesView.loadFinished.disconnect(self._document_ready)
+        self.cybuddy.update.disconnect(self._update_buddy)
+        if self.typingTimer:
+            ym.send_typing(self.cybuddy.yahoo_id, False)
+
+    def receive_message(self, cymessage):
+        sender = cymessage.sender
+        if not sender:
+            sender = self.me.yahoo_id
+        self._javascript('message_in', sender, util.sanitize_html(cymessage.message))
