@@ -246,7 +246,7 @@ class BuddyList(QWidget):
 
     def _set_availability(self, action):
         if type(action) == QAction:
-            avlbcode = action.data().toInt()[0]
+            avlbcode = action.data()
         else:
             avlbcode = int(action)
 
@@ -279,7 +279,7 @@ class BuddyList(QWidget):
         self.widget.avatarButton.setIcon(QIcon(self.app.me.avatar.image))
 
     def _get_buddy(self, yahoo_id):
-        if self.buddy_items.has_key(yahoo_id):
+        if yahoo_id in self.buddy_items:
             return self.buddy_items[yahoo_id]._cybuddy
         # create a new cybuddy
         cybuddy = cyemussa.CyBuddy()

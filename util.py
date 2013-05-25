@@ -1,5 +1,5 @@
 def pixmap_to_base64(pixmap):
-    import cStringIO as StringIO
+    import io as StringIO
     import base64
     from PyQt4.QtCore import QBuffer, QByteArray, QIODevice
 
@@ -22,7 +22,7 @@ def sanitize_html(value):
         if tag.name not in VALID_TAGS:
             tag.hidden = True
 
-    return soup.renderContents()
+    return soup.renderContents().decode()
 
 def yahoo_rich_to_html(text):
     import re

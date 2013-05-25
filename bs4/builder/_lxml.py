@@ -3,7 +3,7 @@ __all__ = [
     'LXMLTreeBuilder',
     ]
 
-from StringIO import StringIO
+from io import StringIO
 import collections
 from lxml import etree
 from bs4.element import Comment, Doctype, NamespacedAttribute
@@ -28,10 +28,6 @@ class LXMLTreeBuilderForXML(TreeBuilder):
 
     CHUNK_SIZE = 512
 
-    # This namespace mapping is specified in the XML Namespace
-    # standard.
-    DEFAULT_NSMAPS = {'http://www.w3.org/XML/1998/namespace' : "xml"}
-
     @property
     def default_parser(self):
         # This can either return a parser object or a class, which
@@ -49,7 +45,7 @@ class LXMLTreeBuilderForXML(TreeBuilder):
             parser = parser(target=self, strip_cdata=False)
         self.parser = parser
         self.soup = None
-        self.nsmaps = [self.DEFAULT_NSMAPS]
+        self.nsmaps = None
 
     def _getNsTag(self, tag):
         # Split the namespace URL out of a fully-qualified lxml tag
@@ -65,7 +61,7 @@ class LXMLTreeBuilderForXML(TreeBuilder):
         :return: A 3-tuple (markup, original encoding, encoding
         declared within markup).
         """
-        if isinstance(markup, unicode):
+        if isinstance(markup, str):
             return markup, None, None, False
 
         try_encodings = [user_specified_encoding, document_declared_encoding]
@@ -75,7 +71,7 @@ class LXMLTreeBuilderForXML(TreeBuilder):
                 dammit.contains_replacement_characters)
 
     def feed(self, markup):
-        if isinstance(markup, basestring):
+        if isinstance(markup, str):
             markup = StringIO(markup)
         # Call feed() at least once, even if the markup is empty,
         # or the parser won't be initialized.
@@ -89,43 +85,47 @@ class LXMLTreeBuilderForXML(TreeBuilder):
         self.parser.close()
 
     def close(self):
-        self.nsmaps = [self.DEFAULT_NSMAPS]
+        self.nsmaps = None
 
     def start(self, name, attrs, nsmap={}):
         # Make sure attrs is a mutable dict--lxml may send an immutable dictproxy.
         attrs = dict(attrs)
+
         nsprefix = None
         # Invert each namespace map as it comes in.
-        if len(self.nsmaps) > 1:
-            # There are no new namespaces for this tag, but
-            # non-default namespaces are in play, so we need a
-            # separate tag stack to know when they end.
+        if len(nsmap) == 0 and self.nsmaps != None:
+            # There are no new namespaces for this tag, but namespaces
+            # are in play, so we need a separate tag stack to know
+            # when they end.
             self.nsmaps.append(None)
         elif len(nsmap) > 0:
             # A new namespace mapping has come into play.
-            inverted_nsmap = dict((value, key) for key, value in nsmap.items())
+            if self.nsmaps is None:
+                self.nsmaps = []
+            inverted_nsmap = dict((value, key) for key, value in list(nsmap.items()))
             self.nsmaps.append(inverted_nsmap)
             # Also treat the namespace mapping as a set of attributes on the
             # tag, so we can recreate it later.
             attrs = attrs.copy()
-            for prefix, namespace in nsmap.items():
+            for prefix, namespace in list(nsmap.items()):
                 attribute = NamespacedAttribute(
                     "xmlns", prefix, "http://www.w3.org/2000/xmlns/")
                 attrs[attribute] = namespace
 
-        # Namespaces are in play. Find any attributes that came in
-        # from lxml with namespaces attached to their names, and
-        # turn then into NamespacedAttribute objects.
-        new_attrs = {}
-        for attr, value in attrs.items():
-            namespace, attr = self._getNsTag(attr)
-            if namespace is None:
-                new_attrs[attr] = value
-            else:
-                nsprefix = self._prefix_for_namespace(namespace)
-                attr = NamespacedAttribute(nsprefix, attr, namespace)
-                new_attrs[attr] = value
-        attrs = new_attrs
+        if self.nsmaps is not None and len(self.nsmaps) > 0:
+            # Namespaces are in play. Find any attributes that came in
+            # from lxml with namespaces attached to their names, and
+            # turn then into NamespacedAttribute objects.
+            new_attrs = {}
+            for attr, value in list(attrs.items()):
+                namespace, attr = self._getNsTag(attr)
+                if namespace is None:
+                    new_attrs[attr] = value
+                else:
+                    nsprefix = self._prefix_for_namespace(namespace)
+                    attr = NamespacedAttribute(nsprefix, attr, namespace)
+                    new_attrs[attr] = value
+            attrs = new_attrs
 
         namespace, name = self._getNsTag(name)
         nsprefix = self._prefix_for_namespace(namespace)
@@ -138,7 +138,6 @@ class LXMLTreeBuilderForXML(TreeBuilder):
         for inverted_nsmap in reversed(self.nsmaps):
             if inverted_nsmap is not None and namespace in inverted_nsmap:
                 return inverted_nsmap[namespace]
-        return None
 
     def end(self, name):
         self.soup.endData()
@@ -151,10 +150,14 @@ class LXMLTreeBuilderForXML(TreeBuilder):
                     nsprefix = inverted_nsmap[namespace]
                     break
         self.soup.handle_endtag(name, nsprefix)
-        if len(self.nsmaps) > 1:
+        if self.nsmaps != None:
             # This tag, or one of its parents, introduced a namespace
             # mapping, so pop it off the stack.
             self.nsmaps.pop()
+            if len(self.nsmaps) == 0:
+                # Namespaces are no longer in play, so don't bother keeping
+                # track of the namespace stack.
+                self.nsmaps = None
 
     def pi(self, target, data):
         pass
@@ -175,7 +178,7 @@ class LXMLTreeBuilderForXML(TreeBuilder):
 
     def test_fragment_to_document(self, fragment):
         """See `TreeBuilder`."""
-        return u'<?xml version="1.0" encoding="utf-8"?>\n%s' % fragment
+        return '<?xml version="1.0" encoding="utf-8"?>\n%s' % fragment
 
 
 class LXMLTreeBuilder(HTMLTreeBuilder, LXMLTreeBuilderForXML):
@@ -193,4 +196,4 @@ class LXMLTreeBuilder(HTMLTreeBuilder, LXMLTreeBuilderForXML):
 
     def test_fragment_to_document(self, fragment):
         """See `TreeBuilder`."""
-        return u'<html><body>%s</body></html>' % fragment
+        return '<html><body>%s</body></html>' % fragment

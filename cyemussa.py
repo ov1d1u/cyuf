@@ -26,16 +26,16 @@ class CyEmussa(QThread, EmussaSession):
             self._disconnect()
 
     def handle_signal(self, callback_id, args):
-        if self.cbs.has_key(callback_id):
+        if callback_id in self.cbs:
             for func in self.cbs[callback_id]:
                 try:
                     if len(args):
                         func(self, *args)
                     else:
                         func(self)
-                except Exception, e:
-                    print 'CyEmussa: Error calling callback: {0}'.format(func)
-                    print traceback.format_exc()
+                except Exception as e:
+                    print('CyEmussa: Error calling callback: {0}'.format(func))
+                    print(traceback.format_exc())
 
     def _callback(self, callback_id, *args):
         if len(args):
@@ -76,7 +76,7 @@ class CyAvatar(QObject):
         image = self.image
         if pixmap:
             image = pixmap
-        if self.sizes.has_key(px):
+        if px in self.sizes:
             return self.sizes[px]
         scaled = image.scaled(QSize(px, px), Qt.KeepAspectRatio, Qt.SmoothTransformation)
         self.sizes[px] = scaled

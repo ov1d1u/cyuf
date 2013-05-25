@@ -37,7 +37,7 @@ class HTML5TreeBuilder(HTMLTreeBuilder):
         doc = parser.parse(markup, encoding=self.user_specified_encoding)
 
         # Set the character encoding detected by the tokenizer.
-        if isinstance(markup, unicode):
+        if isinstance(markup, str):
             # We need to special-case this because html5lib sets
             # charEncoding to UTF-8 if it gets Unicode input.
             doc.original_encoding = None
@@ -51,7 +51,7 @@ class HTML5TreeBuilder(HTMLTreeBuilder):
 
     def test_fragment_to_document(self, fragment):
         """See `TreeBuilder`."""
-        return u'<html><head></head><body>%s</body></html>' % fragment
+        return '<html><head></head><body>%s</body></html>' % fragment
 
 
 class TreeBuilderForHtml5lib(html5lib.treebuilders._base.TreeBuilder):
@@ -132,7 +132,8 @@ class Element(html5lib.treebuilders._base.Node):
             new_element = self.soup.new_string(old_element + node.element)
             old_element.replace_with(new_element)
         else:
-            self.soup.object_was_parsed(node.element, parent=self.element)
+            self.element.append(node.element)
+            node.parent = self
 
     def getAttributes(self):
         return AttrList(self.element)
@@ -149,7 +150,7 @@ class Element(html5lib.treebuilders._base.Node):
 
             self.soup.builder._replace_cdata_list_attribute_values(
                 self.name, attributes)
-            for name, value in attributes.items():
+            for name, value in list(attributes.items()):
                 self.element[name] = value
 
             # The attributes may contain variables that need substitution.

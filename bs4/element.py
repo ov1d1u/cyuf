@@ -21,22 +21,19 @@ def _alias(attr):
     return alias
 
 
-class NamespacedAttribute(unicode):
+class NamespacedAttribute(str):
 
     def __new__(cls, prefix, name, namespace=None):
         if name is None:
-            obj = unicode.__new__(cls, prefix)
-        elif prefix is None:
-            # Not really namespaced.
-            obj = unicode.__new__(cls, name)
+            obj = str.__new__(cls, prefix)
         else:
-            obj = unicode.__new__(cls, prefix + ":" + name)
+            obj = str.__new__(cls, prefix + ":" + name)
         obj.prefix = prefix
         obj.name = name
         obj.namespace = namespace
         return obj
 
-class AttributeValueWithCharsetSubstitution(unicode):
+class AttributeValueWithCharsetSubstitution(str):
     """A stand-in object for a character encoding specified in HTML."""
 
 class CharsetMetaAttributeValue(AttributeValueWithCharsetSubstitution):
@@ -47,7 +44,7 @@ class CharsetMetaAttributeValue(AttributeValueWithCharsetSubstitution):
     """
 
     def __new__(cls, original_value):
-        obj = unicode.__new__(cls, original_value)
+        obj = str.__new__(cls, original_value)
         obj.original_value = original_value
         return obj
 
@@ -70,9 +67,9 @@ class ContentMetaAttributeValue(AttributeValueWithCharsetSubstitution):
         match = cls.CHARSET_RE.search(original_value)
         if match is None:
             # No substitution necessary.
-            return unicode.__new__(unicode, original_value)
+            return str.__new__(str, original_value)
 
-        obj = unicode.__new__(cls, original_value)
+        obj = str.__new__(cls, original_value)
         obj.original_value = original_value
         return obj
 
@@ -81,40 +78,6 @@ class ContentMetaAttributeValue(AttributeValueWithCharsetSubstitution):
             return match.group(1) + encoding
         return self.CHARSET_RE.sub(rewrite, self.original_value)
 
-class HTMLAwareEntitySubstitution(EntitySubstitution):
-
-    """Entity substitution rules that are aware of some HTML quirks.
-
-    Specifically, the contents of <script> and <style> tags should not
-    undergo entity substitution.
-
-    Incoming NavigableString objects are checked to see if they're the
-    direct children of a <script> or <style> tag.
-    """
-
-    cdata_containing_tags = set(["script", "style"])
-
-    preformatted_tags = set(["pre"])
-
-    @classmethod
-    def _substitute_if_appropriate(cls, ns, f):
-        if (isinstance(ns, NavigableString)
-            and ns.parent is not None
-            and ns.parent.name in cls.cdata_containing_tags):
-            # Do nothing.
-            return ns
-        # Substitute.
-        return f(ns)
-
-    @classmethod
-    def substitute_html(cls, ns):
-        return cls._substitute_if_appropriate(
-            ns, EntitySubstitution.substitute_html)
-
-    @classmethod
-    def substitute_xml(cls, ns):
-        return cls._substitute_if_appropriate(
-            ns, EntitySubstitution.substitute_xml)
 
 class PageElement(object):
     """Contains the navigational information for some part of the page
@@ -131,59 +94,24 @@ class PageElement(object):
     #   converted to entities.  This is not recommended, but it's
     #   faster than "minimal".
     # A function - This function will be called on every string that
-    #  needs to undergo entity substitution.
-    #
-
-    # In an HTML document, the default "html" and "minimal" functions
-    # will leave the contents of <script> and <style> tags alone. For
-    # an XML document, all tags will be given the same treatment.
-
-    HTML_FORMATTERS = {
-        "html" : HTMLAwareEntitySubstitution.substitute_html,
-        "minimal" : HTMLAwareEntitySubstitution.substitute_xml,
-        None : None
-        }
-
-    XML_FORMATTERS = {
+    #  needs to undergo entity substition
+    FORMATTERS = {
         "html" : EntitySubstitution.substitute_html,
         "minimal" : EntitySubstitution.substitute_xml,
         None : None
         }
 
+    @classmethod
     def format_string(self, s, formatter='minimal'):
         """Format the given string using the given formatter."""
-        if not callable(formatter):
-            formatter = self._formatter_for_name(formatter)
+        if not isinstance(formatter, collections.Callable):
+            formatter = self.FORMATTERS.get(
+                formatter, EntitySubstitution.substitute_xml)
         if formatter is None:
             output = s
         else:
             output = formatter(s)
         return output
-
-    @property
-    def _is_xml(self):
-        """Is this element part of an XML tree or an HTML tree?
-
-        This is used when mapping a formatter name ("minimal") to an
-        appropriate function (one that performs entity-substitution on
-        the contents of <script> and <style> tags, or not). It's
-        inefficient, but it should be called very rarely.
-        """
-        if self.parent is None:
-            # This is the top-level object. It should have .is_xml set
-            # from tree creation. If not, take a guess--BS is usually
-            # used on HTML markup.
-            return getattr(self, 'is_xml', False)
-        return self.parent._is_xml
-
-    def _formatter_for_name(self, name):
-        "Look up a formatter function based on its name and the tree."
-        if self._is_xml:
-            return self.XML_FORMATTERS.get(
-                name, EntitySubstitution.substitute_xml)
-        else:
-            return self.HTML_FORMATTERS.get(
-                name, HTMLAwareEntitySubstitution.substitute_xml)
 
     def setup(self, parent=None, previous_element=None):
         """Sets up the initial relations between this element and
@@ -267,7 +195,7 @@ class PageElement(object):
     def insert(self, position, new_child):
         if new_child is self:
             raise ValueError("Cannot insert a tag into itself.")
-        if (isinstance(new_child, basestring)
+        if (isinstance(new_child, str)
             and not isinstance(new_child, NavigableString)):
             new_child = NavigableString(new_child)
 
@@ -438,7 +366,7 @@ class PageElement(object):
         # NOTE: We can't use _find_one because findParents takes a different
         # set of arguments.
         r = None
-        l = self.find_parents(name, attrs, 1, **kwargs)
+        l = self.find_parents(name, attrs, 1)
         if l:
             r = l[0]
         return r
@@ -481,7 +409,7 @@ class PageElement(object):
                 return [element for element in generator
                         if isinstance(element, Tag)]
             # Optimization to find all tags with a given name.
-            elif isinstance(name, basestring):
+            elif isinstance(name, str):
                 return [element for element in generator
                         if isinstance(element, Tag) and element.name == name]
             else:
@@ -567,14 +495,6 @@ class PageElement(object):
             value =" ".join(value)
         return value
 
-    def _tag_name_matches_and(self, function, tag_name):
-        if not tag_name:
-            return function
-        else:
-            def _match(tag):
-                return tag.name == tag_name and function(tag)
-            return _match
-
     def _attribute_checker(self, operator, attribute, value=''):
         """Create a function that performs a CSS selector operation.
 
@@ -616,6 +536,87 @@ class PageElement(object):
         else:
             return lambda el: el.has_attr(attribute)
 
+    def select(self, selector):
+        """Perform a CSS selection operation on the current element."""
+        tokens = selector.split()
+        current_context = [self]
+        for index, token in enumerate(tokens):
+            if tokens[index - 1] == '>':
+                # already found direct descendants in last step. skip this
+                # step.
+                continue
+            m = self.attribselect_re.match(token)
+            if m is not None:
+                # Attribute selector
+                tag, attribute, operator, value = m.groups()
+                if not tag:
+                    tag = True
+                checker = self._attribute_checker(operator, attribute, value)
+                found = []
+                for context in current_context:
+                    found.extend(
+                        [el for el in context.find_all(tag) if checker(el)])
+                current_context = found
+                continue
+
+            if '#' in token:
+                # ID selector
+                tag, id = token.split('#', 1)
+                if tag == "":
+                    tag = True
+                el = current_context[0].find(tag, {'id': id})
+                if el is None:
+                    return [] # No match
+                current_context = [el]
+                continue
+
+            if '.' in token:
+                # Class selector
+                tag_name, klass = token.split('.', 1)
+                if not tag_name:
+                    tag_name = True
+                classes = set(klass.split('.'))
+                found = []
+                def classes_match(tag):
+                    if tag_name is not True and tag.name != tag_name:
+                        return False
+                    if not tag.has_attr('class'):
+                        return False
+                    return classes.issubset(tag['class'])
+                for context in current_context:
+                    found.extend(context.find_all(classes_match))
+                current_context = found
+                continue
+
+            if token == '*':
+                # Star selector
+                found = []
+                for context in current_context:
+                    found.extend(context.findAll(True))
+                current_context = found
+                continue
+
+            if token == '>':
+                # Child selector
+                tag = tokens[index + 1]
+                if not tag:
+                    tag = True
+
+                found = []
+                for context in current_context:
+                    found.extend(context.find_all(tag, recursive=False))
+                current_context = found
+                continue
+
+            # Here we should just have a regular tag
+            if not self.tag_name_re.match(token):
+                return []
+            found = []
+            for context in current_context:
+                found.extend(context.findAll(token))
+            current_context = found
+        return current_context
+
     # Old non-property versions of the generators, for backwards
     # compatibility with BS3.
     def nextGenerator(self):
@@ -634,7 +635,7 @@ class PageElement(object):
         return self.parents
 
 
-class NavigableString(unicode, PageElement):
+class NavigableString(str, PageElement):
 
     PREFIX = ''
     SUFFIX = ''
@@ -647,15 +648,12 @@ class NavigableString(unicode, PageElement):
         passed in to the superclass's __new__ or the superclass won't know
         how to handle non-ASCII characters.
         """
-        if isinstance(value, unicode):
-            return unicode.__new__(cls, value)
-        return unicode.__new__(cls, value, DEFAULT_OUTPUT_ENCODING)
-
-    def __copy__(self):
-        return self
+        if isinstance(value, str):
+            return str.__new__(cls, value)
+        return str.__new__(cls, value, DEFAULT_OUTPUT_ENCODING)
 
     def __getnewargs__(self):
-        return (unicode(self),)
+        return (str(self),)
 
     def __getattr__(self, attr):
         """text.string gives you text. This is for backwards
@@ -688,30 +686,30 @@ class PreformattedString(NavigableString):
 
 class CData(PreformattedString):
 
-    PREFIX = u'<![CDATA['
-    SUFFIX = u']]>'
+    PREFIX = '<![CDATA['
+    SUFFIX = ']]>'
 
 class ProcessingInstruction(PreformattedString):
 
-    PREFIX = u'<?'
-    SUFFIX = u'?>'
+    PREFIX = '<?'
+    SUFFIX = '?>'
 
 class Comment(PreformattedString):
 
-    PREFIX = u'<!--'
-    SUFFIX = u'-->'
+    PREFIX = '<!--'
+    SUFFIX = '-->'
 
 
 class Declaration(PreformattedString):
-    PREFIX = u'<!'
-    SUFFIX = u'!>'
+    PREFIX = '<!'
+    SUFFIX = '!>'
 
 
 class Doctype(PreformattedString):
 
     @classmethod
     def for_name_and_ids(cls, name, pub_id, system_id):
-        value = name or ''
+        value = name
         if pub_id is not None:
             value += ' PUBLIC "%s"' % pub_id
             if system_id is not None:
@@ -721,8 +719,8 @@ class Doctype(PreformattedString):
 
         return Doctype(value)
 
-    PREFIX = u'<!DOCTYPE '
-    SUFFIX = u'>\n'
+    PREFIX = '<!DOCTYPE '
+    SUFFIX = '>\n'
 
 
 class Tag(PageElement):
@@ -805,24 +803,16 @@ class Tag(PageElement):
         self.clear()
         self.append(string.__class__(string))
 
-    def _all_strings(self, strip=False, types=(NavigableString, CData)):
-        """Yield all strings of certain classes, possibly stripping them.
-
-        By default, yields only NavigableString and CData objects. So
-        no comments, processing instructions, etc.
-        """
+    def _all_strings(self, strip=False):
+        """Yield all child strings, possibly stripping them."""
         for descendant in self.descendants:
-            if (
-                (types is None and not isinstance(descendant, NavigableString))
-                or
-                (types is not None and type(descendant) not in types)):
+            if not isinstance(descendant, NavigableString):
                 continue
             if strip:
                 descendant = descendant.strip()
                 if len(descendant) == 0:
                     continue
             yield descendant
-
     strings = property(_all_strings)
 
     @property
@@ -830,13 +820,11 @@ class Tag(PageElement):
         for string in self._all_strings(True):
             yield string
 
-    def get_text(self, separator=u"", strip=False,
-                 types=(NavigableString, CData)):
+    def get_text(self, separator="", strip=False):
         """
         Get all child strings, concatenated using the given separator.
         """
-        return separator.join([s for s in self._all_strings(
-                    strip, types=types)])
+        return separator.join([s for s in self._all_strings(strip)])
     getText = get_text
     text = property(get_text)
 
@@ -847,7 +835,6 @@ class Tag(PageElement):
         while i is not None:
             next = i.next_element
             i.__dict__.clear()
-            i.contents = []
             i = next
 
     def clear(self, decompose=False):
@@ -902,7 +889,7 @@ class Tag(PageElement):
     def __contains__(self, x):
         return x in self.contents
 
-    def __nonzero__(self):
+    def __bool__(self):
         "A tag is non-None even if it has no contents."
         return True
 
@@ -979,13 +966,6 @@ class Tag(PageElement):
         u = self.decode(indent_level, encoding, formatter)
         return u.encode(encoding, errors)
 
-    def _should_pretty_print(self, indent_level):
-        """Should this tag be pretty-printed?"""
-        return (
-            indent_level is not None and
-            (self.name not in HTMLAwareEntitySubstitution.preformatted_tags
-             or self._is_xml))
-
     def decode(self, indent_level=None,
                eventual_encoding=DEFAULT_OUTPUT_ENCODING,
                formatter="minimal"):
@@ -998,12 +978,6 @@ class Tag(PageElement):
            document contains a <META> tag that mentions the document's
            encoding.
         """
-
-        # First off, turn a string formatter into a function. This
-        # will stop the lookup from happening over and over again.
-        if not callable(formatter):
-            formatter = self._formatter_for_name(formatter)
-
         attrs = []
         if self.attrs:
             for key, val in sorted(self.attrs.items()):
@@ -1012,8 +986,8 @@ class Tag(PageElement):
                 else:
                     if isinstance(val, list) or isinstance(val, tuple):
                         val = ' '.join(val)
-                    elif not isinstance(val, basestring):
-                        val = unicode(val)
+                    elif not isinstance(val, str):
+                        val = str(val)
                     elif (
                         isinstance(val, AttributeValueWithCharsetSubstitution)
                         and eventual_encoding is not None):
@@ -1021,7 +995,7 @@ class Tag(PageElement):
 
                     text = self.format_string(val, formatter)
                     decoded = (
-                        unicode(key) + '='
+                        str(key) + '='
                         + EntitySubstitution.quoted_attribute_value(text))
                 attrs.append(decoded)
         close = ''
@@ -1036,15 +1010,12 @@ class Tag(PageElement):
         else:
             closeTag = '</%s%s>' % (prefix, self.name)
 
-        pretty_print = self._should_pretty_print(indent_level)
-        space = ''
-        indent_space = ''
-        if indent_level is not None:
-            indent_space = (' ' * (indent_level - 1))
+        pretty_print = (indent_level is not None)
         if pretty_print:
-            space = indent_space
+            space = (' ' * (indent_level - 1))
             indent_contents = indent_level + 1
         else:
+            space = ''
             indent_contents = None
         contents = self.decode_contents(
             indent_contents, eventual_encoding, formatter)
@@ -1057,10 +1028,8 @@ class Tag(PageElement):
             attribute_string = ''
             if attrs:
                 attribute_string = ' ' + ' '.join(attrs)
-            if indent_level is not None:
-                # Even if this particular tag is not pretty-printed,
-                # we should indent up to the start of the tag.
-                s.append(indent_space)
+            if pretty_print:
+                s.append(space)
             s.append('<%s%s%s%s>' % (
                     prefix, self.name, attribute_string, close))
             if pretty_print:
@@ -1071,10 +1040,7 @@ class Tag(PageElement):
             if pretty_print and closeTag:
                 s.append(space)
             s.append(closeTag)
-            if indent_level is not None and closeTag and self.next_sibling:
-                # Even if this particular tag is not pretty-printed,
-                # we're now done with the tag, and we should add a
-                # newline if appropriate.
+            if pretty_print and closeTag and self.next_sibling:
                 s.append("\n")
             s = ''.join(s)
         return s
@@ -1097,11 +1063,6 @@ class Tag(PageElement):
            document contains a <META> tag that mentions the document's
            encoding.
         """
-        # First off, turn a string formatter into a function. This
-        # will stop the lookup from happening over and over again.
-        if not callable(formatter):
-            formatter = self._formatter_for_name(formatter)
-
         pretty_print = (indent_level is not None)
         s = []
         for c in self:
@@ -1111,13 +1072,13 @@ class Tag(PageElement):
             elif isinstance(c, Tag):
                 s.append(c.decode(indent_level, eventual_encoding,
                                   formatter))
-            if text and indent_level and not self.name == 'pre':
+            if text and indent_level:
                 text = text.strip()
             if text:
-                if pretty_print and not self.name == 'pre':
+                if pretty_print:
                     s.append(" " * (indent_level - 1))
                 s.append(text)
-                if pretty_print and not self.name == 'pre':
+                if pretty_print:
                     s.append("\n")
         return ''.join(s)
 
@@ -1184,207 +1145,6 @@ class Tag(PageElement):
             yield current
             current = current.next_element
 
-    # CSS selector code
-
-    _selector_combinators = ['>', '+', '~']
-    _select_debug = False
-    def select(self, selector, _candidate_generator=None):
-        """Perform a CSS selection operation on the current element."""
-        tokens = selector.split()
-        current_context = [self]
-
-        if tokens[-1] in self._selector_combinators:
-            raise ValueError(
-                'Final combinator "%s" is missing an argument.' % tokens[-1])
-        if self._select_debug:
-            print 'Running CSS selector "%s"' % selector
-        for index, token in enumerate(tokens):
-            if self._select_debug:
-                print ' Considering token "%s"' % token
-            recursive_candidate_generator = None
-            tag_name = None
-            if tokens[index-1] in self._selector_combinators:
-                # This token was consumed by the previous combinator. Skip it.
-                if self._select_debug:
-                    print '  Token was consumed by the previous combinator.'
-                continue
-            # Each operation corresponds to a checker function, a rule
-            # for determining whether a candidate matches the
-            # selector. Candidates are generated by the active
-            # iterator.
-            checker = None
-
-            m = self.attribselect_re.match(token)
-            if m is not None:
-                # Attribute selector
-                tag_name, attribute, operator, value = m.groups()
-                checker = self._attribute_checker(operator, attribute, value)
-
-            elif '#' in token:
-                # ID selector
-                tag_name, tag_id = token.split('#', 1)
-                def id_matches(tag):
-                    return tag.get('id', None) == tag_id
-                checker = id_matches
-
-            elif '.' in token:
-                # Class selector
-                tag_name, klass = token.split('.', 1)
-                classes = set(klass.split('.'))
-                def classes_match(candidate):
-                    return classes.issubset(candidate.get('class', []))
-                checker = classes_match
-
-            elif ':' in token:
-                # Pseudo-class
-                tag_name, pseudo = token.split(':', 1)
-                if tag_name == '':
-                    raise ValueError(
-                        "A pseudo-class must be prefixed with a tag name.")
-                pseudo_attributes = re.match('([a-zA-Z\d-]+)\(([a-zA-Z\d]+)\)', pseudo)
-                found = []
-                if pseudo_attributes is not None:
-                    pseudo_type, pseudo_value = pseudo_attributes.groups()
-                    if pseudo_type == 'nth-of-type':
-                        try:
-                            pseudo_value = int(pseudo_value)
-                        except:
-                            raise NotImplementedError(
-                                'Only numeric values are currently supported for the nth-of-type pseudo-class.')
-                        if pseudo_value < 1:
-                            raise ValueError(
-                                'nth-of-type pseudo-class value must be at least 1.')
-                        class Counter(object):
-                            def __init__(self, destination):
-                                self.count = 0
-                                self.destination = destination
-
-                            def nth_child_of_type(self, tag):
-                                self.count += 1
-                                if self.count == self.destination:
-                                    return True
-                                if self.count > self.destination:
-                                    # Stop the generator that's sending us
-                                    # these things.
-                                    raise StopIteration()
-                                return False
-                        checker = Counter(pseudo_value).nth_child_of_type
-                    else:
-                        raise NotImplementedError(
-                            'Only the following pseudo-classes are implemented: nth-of-type.')
-
-            elif token == '*':
-                # Star selector -- matches everything
-                pass
-            elif token == '>':
-                # Run the next token as a CSS selector against the
-                # direct children of each tag in the current context.
-                recursive_candidate_generator = lambda tag: tag.children
-            elif token == '~':
-                # Run the next token as a CSS selector against the
-                # siblings of each tag in the current context.
-                recursive_candidate_generator = lambda tag: tag.next_siblings
-            elif token == '+':
-                # For each tag in the current context, run the next
-                # token as a CSS selector against the tag's next
-                # sibling that's a tag.
-                def next_tag_sibling(tag):
-                    yield tag.find_next_sibling(True)
-                recursive_candidate_generator = next_tag_sibling
-
-            elif self.tag_name_re.match(token):
-                # Just a tag name.
-                tag_name = token
-            else:
-                raise ValueError(
-                    'Unsupported or invalid CSS selector: "%s"' % token)
-
-            if recursive_candidate_generator:
-                # This happens when the selector looks like  "> foo".
-                #
-                # The generator calls select() recursively on every
-                # member of the current context, passing in a different
-                # candidate generator and a different selector.
-                #
-                # In the case of "> foo", the candidate generator is
-                # one that yields a tag's direct children (">"), and
-                # the selector is "foo".
-                next_token = tokens[index+1]
-                def recursive_select(tag):
-                    if self._select_debug:
-                        print '    Calling select("%s") recursively on %s %s' % (next_token, tag.name, tag.attrs)
-                        print '-' * 40
-                    for i in tag.select(next_token, recursive_candidate_generator):
-                        if self._select_debug:
-                            print '(Recursive select picked up candidate %s %s)' % (i.name, i.attrs)
-                        yield i
-                    if self._select_debug:
-                        print '-' * 40
-                _use_candidate_generator = recursive_select
-            elif _candidate_generator is None:
-                # By default, a tag's candidates are all of its
-                # children. If tag_name is defined, only yield tags
-                # with that name.
-                if self._select_debug:
-                    if tag_name:
-                        check = "[any]"
-                    else:
-                        check = tag_name
-                    print '   Default candidate generator, tag name="%s"' % check
-                if self._select_debug:
-                    # This is redundant with later code, but it stops
-                    # a bunch of bogus tags from cluttering up the
-                    # debug log.
-                    def default_candidate_generator(tag):
-                        for child in tag.descendants:
-                            if not isinstance(child, Tag):
-                                continue
-                            if tag_name and not child.name == tag_name:
-                                continue
-                            yield child
-                    _use_candidate_generator = default_candidate_generator
-                else:
-                    _use_candidate_generator = lambda tag: tag.descendants
-            else:
-                _use_candidate_generator = _candidate_generator
-
-            new_context = []
-            new_context_ids = set([])
-            for tag in current_context:
-                if self._select_debug:
-                    print "    Running candidate generator on %s %s" % (
-                        tag.name, repr(tag.attrs))
-                for candidate in _use_candidate_generator(tag):
-                    if not isinstance(candidate, Tag):
-                        continue
-                    if tag_name and candidate.name != tag_name:
-                        continue
-                    if checker is not None:
-                        try:
-                            result = checker(candidate)
-                        except StopIteration:
-                            # The checker has decided we should no longer
-                            # run the generator.
-                            break
-                    if checker is None or result:
-                        if self._select_debug:
-                            print "     SUCCESS %s %s" % (candidate.name, repr(candidate.attrs))
-                        if id(candidate) not in new_context_ids:
-                            # If a tag matches a selector more than once,
-                            # don't include it in the context more than once.
-                            new_context.append(candidate)
-                            new_context_ids.add(id(candidate))
-                    elif self._select_debug:
-                        print "     FAILURE %s %s" % (candidate.name, repr(candidate.attrs))
-
-            current_context = new_context
-
-        if self._select_debug:
-            print "Final verdict:"
-            for i in current_context:
-                print " %s %s" % (i.name, i.attrs)
-        return current_context
-
     # Old names for backwards compatibility
     def childGenerator(self):
         return self.children
@@ -1392,13 +1152,10 @@ class Tag(PageElement):
     def recursiveChildGenerator(self):
         return self.descendants
 
-    def has_key(self, key):
-        """This was kind of misleading because has_key() (attributes)
-        was different from __in__ (contents). has_key() is gone in
-        Python 3, anyway."""
-        warnings.warn('has_key is deprecated. Use has_attr("%s") instead.' % (
-                key))
-        return self.has_attr(key)
+    # This was kind of misleading because has_key() (attributes) was
+    # different from __in__ (contents). has_key() is gone in Python 3,
+    # anyway.
+    has_key = has_attr
 
 # Next, a couple classes to represent queries and their results.
 class SoupStrainer(object):
@@ -1426,7 +1183,7 @@ class SoupStrainer(object):
             else:
                 attrs = kwargs
         normalized_attrs = {}
-        for key, value in attrs.items():
+        for key, value in list(attrs.items()):
             normalized_attrs[key] = self._normalize_search_value(value)
 
         self.attrs = normalized_attrs
@@ -1435,7 +1192,7 @@ class SoupStrainer(object):
     def _normalize_search_value(self, value):
         # Leave it alone if it's a Unicode string, a callable, a
         # regular expression, a boolean, or None.
-        if (isinstance(value, unicode) or callable(value) or hasattr(value, 'match')
+        if (isinstance(value, str) or isinstance(value, collections.Callable) or hasattr(value, 'match')
             or isinstance(value, bool) or value is None):
             return value
 
@@ -1448,7 +1205,7 @@ class SoupStrainer(object):
             new_value = []
             for v in value:
                 if (hasattr(v, '__iter__') and not isinstance(v, bytes)
-                    and not isinstance(v, unicode)):
+                    and not isinstance(v, str)):
                     # This is almost certainly the user's mistake. In the
                     # interests of avoiding infinite loops, we'll let
                     # it through as-is rather than doing a recursive call.
@@ -1460,7 +1217,7 @@ class SoupStrainer(object):
         # Otherwise, convert it into a Unicode string.
         # The unicode(str()) thing is so this will do the same thing on Python 2
         # and Python 3.
-        return unicode(str(value))
+        return str(str(value))
 
     def __str__(self):
         if self.text:
@@ -1514,7 +1271,7 @@ class SoupStrainer(object):
         found = None
         # If given a list of items, scan it for a text element that
         # matches.
-        if hasattr(markup, '__iter__') and not isinstance(markup, (Tag, basestring)):
+        if hasattr(markup, '__iter__') and not isinstance(markup, (Tag, str)):
             for element in markup:
                 if isinstance(element, NavigableString) \
                        and self.search(element):
@@ -1527,7 +1284,7 @@ class SoupStrainer(object):
                 found = self.search_tag(markup)
         # If it's text, make sure the text matches.
         elif isinstance(markup, NavigableString) or \
-                 isinstance(markup, basestring):
+                 isinstance(markup, str):
             if not self.name and not self.attrs and self._matches(markup, self.text):
                 found = markup
         else:
@@ -1541,7 +1298,7 @@ class SoupStrainer(object):
         if isinstance(markup, list) or isinstance(markup, tuple):
             # This should only happen when searching a multi-valued attribute
             # like 'class'.
-            if (isinstance(match_against, unicode)
+            if (isinstance(match_against, str)
                 and ' ' in match_against):
                 # A bit of a special case. If they try to match "foo
                 # bar" on a multivalue attribute's value, only accept
@@ -1576,7 +1333,7 @@ class SoupStrainer(object):
             # None matches None, False, an empty string, an empty list, and so on.
             return not match_against
 
-        if isinstance(match_against, unicode):
+        if isinstance(match_against, str):
             # Exact string match
             return markup == match_against
 
