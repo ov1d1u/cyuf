@@ -67,6 +67,7 @@ class CyAvatar(QObject):
         super(CyAvatar, self).__init__()
         self.buddy = cybuddy
         self.image = QPixmap("ui/resources/no-avatar.png")
+        self.sizes = {}
 
         if self.buddy:
             self.get_from_yahoo()
@@ -75,7 +76,11 @@ class CyAvatar(QObject):
         image = self.image
         if pixmap:
             image = pixmap
-        return image.scaled(QSize(px, px), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        if self.sizes.has_key(px):
+            return self.sizes[px]
+        scaled = image.scaled(QSize(px, px), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        self.sizes[px] = scaled
+        return scaled
 
     def set_from_pixmap(self, pixmap):
         self.image = self.scaled(96, pixmap)
@@ -93,6 +98,7 @@ class CyAvatar(QObject):
         pixmap = QPixmap()
         pixmap.loadFromData(imgdata)
         if not pixmap.isNull():
+            self.sizes = {}
             self.image = pixmap
             self.update.emit()
 

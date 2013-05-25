@@ -60,6 +60,7 @@ class ChatWidget(QWidget):
         for task in self.queue:
             self._javascript(task[0], *task[1])
         self.queue = []
+        self._javascript('show_timestamps', 'true')
 
     def _update_buddy(self):
         self.widget.contactName.setText(self.cybuddy.yahoo_id)
