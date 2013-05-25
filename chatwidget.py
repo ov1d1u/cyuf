@@ -5,7 +5,7 @@ from PyQt4.QtNetwork  import *
 
 from libemussa.const import *
 from libemussa import callbacks as cb
-import cyemussa, util
+import cyemussa, util, datetime
 
 ym = cyemussa.CyEmussa.Instance()
 
@@ -18,7 +18,8 @@ class ChatWidget(QWidget):
         self.cybuddy = cybuddy
         self.typingTimer = None
         self.is_ready = False
-
+        self.queue = []
+        
         ym.register_callback(cb.EMUSSA_CALLBACK_TYPING_NOTIFY, self._typing)
         self.widget.textEdit.keyPressEvent = self._writing_message
         self.widget.sendButton.clicked.connect(self._send_message)
@@ -32,10 +33,8 @@ class ChatWidget(QWidget):
 
     def _javascript(self, function, *args):
         # if the document is not ready, wait a while until we start calling JS functions on it
-        dieTime = QTime.currentTime().addMSecs(100)
-        while QTime.currentTime() < dieTime and not self.is_ready:
-            QCoreApplication.processEvents(QEventLoop.AllEvents, 100)
-            dieTime = QTime.currentTime().addMSecs(100)
+        if not self.is_ready:
+            self.queue.append([function, args])
         arguments_list = []
         for arg in args:
             jsarg = str(arg).replace("'", "\\'")
@@ -57,6 +56,10 @@ class ChatWidget(QWidget):
                 ' seems to be offline and will receive your messages next time when he/she logs in.',
                 pixmap
             )
+
+        for task in self.queue:
+            self._javascript(task[0], *task[1])
+        self.queue = []
 
     def _update_buddy(self):
         self.widget.contactName.setText(self.cybuddy.yahoo_id)
@@ -111,9 +114,10 @@ class ChatWidget(QWidget):
 
     def _send_message(self):
         message = util.sanitize_html(self.widget.textEdit.toPlainText())
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         self.widget.textEdit.setDocument(QTextDocument())
         ym.send_message(self.cybuddy.yahoo_id, str(message))
-        self._javascript('message_out', self.me.yahoo_id, message)
+        self._javascript('message_out', self.me.yahoo_id, message, timestamp)
 
     def timerEvent(self, event):
         ym.send_typing(self.cybuddy.yahoo_id, False)
@@ -132,6 +136,12 @@ class ChatWidget(QWidget):
 
     def receive_message(self, cymessage):
         sender = cymessage.sender
+        message = util.yahoo_rich_to_html(cymessage.message)
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         if not sender:
             sender = self.me.yahoo_id
-        self._javascript('message_in', sender, util.sanitize_html(cymessage.message))
+        if cymessage.offline:
+            message = '(offline) {0}'.format(message)
+        if cymessage.timestamp:
+            timestamp = datetime.datetime.fromtimestamp(int(cymessage.timestamp)).strftime('%Y-%m-%d %H:%M:%S')
+        self._javascript('message_in', sender, util.sanitize_html(message), timestamp)

@@ -291,7 +291,7 @@
           <number>-1</number>
          </property>
          <property name="indentation">
-          <number>12</number>
+          <number>16</number>
          </property>
          <property name="rootIsDecorated">
           <bool>true</bool>

@@ -1,7 +1,7 @@
 #
 # Qt wrapper around libEmussa classes
 #
-
+import traceback
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkRequest
@@ -35,7 +35,7 @@ class CyEmussa(QThread, EmussaSession):
                         func(self)
                 except Exception, e:
                     print 'CyEmussa: Error calling callback: {0}'.format(func)
-                    print 'CyEmussa: Exception: {0}'.format(e)
+                    print traceback.format_exc()
 
     def _callback(self, callback_id, *args):
         if len(args):

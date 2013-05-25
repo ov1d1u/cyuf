@@ -14,7 +14,7 @@ def pixmap_to_base64(pixmap):
 
 
 def sanitize_html(value):
-    VALID_TAGS = ['b', 'i', 'u', 's', 'ding', 'br']
+    VALID_TAGS = ['b', 'i', 'u', 's', 'ding', 'br', 'font']
     from bs4 import BeautifulSoup
     soup = BeautifulSoup(value)
 
@@ -23,3 +23,14 @@ def sanitize_html(value):
             tag.hidden = True
 
     return soup.renderContents()
+
+def yahoo_rich_to_html(text):
+    import re
+    message = text.replace('[1m', '<b>')
+    message = message.replace('[x1m', '</b>')
+    message = message.replace('[2m', '<i>')
+    message = message.replace('[x2m', '</i>')
+    message = message.replace('[4m', '<u>')
+    message = message.replace('[x4m', '</u>')
+    message = re.sub(r'\[#(.*?)m', r'<font color="#\1">', message)
+    return message

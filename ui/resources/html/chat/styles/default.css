@@ -19,6 +19,11 @@ img {
   margin-top: 2px;
 }
 
+.timestamp {
+  font-weight: normal;
+  display: none;
+}
+
 .message_in {
   margin-left: 5px;
 }

@@ -1,3 +1,5 @@
+var hide_timestamp = true;
+
 function _append(element) {
   if ($('#typing').length) {
     $(element).insertBefore($('#typing'))
@@ -6,6 +8,16 @@ function _append(element) {
   }
   $('html,body').clearQueue()
   $('html,body').animate({scrollTop: $('html,body').height()}, 500)
+}
+
+function show_timestamps(show) {
+  if (show == 'true'){
+    $('.timestamp').show()
+    hide_timestamp = false
+  } else {
+    $('.timestamp').hide()
+    hide_timestamp = true
+  }
 }
 
 function add_info(text, image) {
@@ -18,13 +30,20 @@ function add_info(text, image) {
   _append(div)
 }
 
-function message_in(sender, message) {
+function message_in(sender, message, timestamp) {
   var div = $('<div></div>')
   div.attr('class', 'message message_in')
   
+  var time = $('<span></span>')
+  time.attr('class', 'timestamp')
+  if (!hide_timestamp) time.show()
+  if (timestamp) time.html(' (' + timestamp + ')')
+  
   var sender_id = $('<span></span>')
   sender_id.attr('class', 'yahoo_id')
-  sender_id.html(sender + ': ')
+  sender_id.append(sender)
+  sender_id.append(time)
+  sender_id.append(': ')
   
   div.html(sender_id)
   div.append(message)
@@ -32,13 +51,20 @@ function message_in(sender, message) {
   _append(div)
 }
 
-function message_out(sender, message) {
+function message_out(sender, message, timestamp) {
   var div = $('<div></div>')
   div.attr('class', 'message message_out')
   
+  var time = $('<span></span>')
+  time.attr('class', 'timestamp')
+  if (!hide_timestamp) time.show()
+  if (timestamp) time.html(' (' + timestamp + ')')
+  
   var sender_id = $('<span></span>')
   sender_id.attr('class', 'yahoo_id')
-  sender_id.html(sender + ': ')
+  sender_id.append(sender)
+  sender_id.append(time)
+  sender_id.append(': ')
   
   div.html(sender_id)
   div.append(message)

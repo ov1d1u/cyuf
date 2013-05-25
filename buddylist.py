@@ -44,10 +44,12 @@ class BuddyItem(QTreeWidgetItem):
 
     def _setupLayout(self):
         self.layout = QHBoxLayout()
+        self.layout.setContentsMargins(2, 1, 2, 1)
 
         if not self.compact:
             self.right_widget = QWidget()
             self.vertical_layout = QVBoxLayout(self.right_widget)
+            self.vertical_layout.setContentsMargins(2, 1, 2, 1)
             self.horizontal_layout = QHBoxLayout()
 
         self.layout.addWidget(self.avatar_holder)
@@ -188,7 +190,7 @@ class BuddyList(QWidget):
 
         self.widget.tab1Btn = QPushButton()
         self.widget.tab1Btn.setFlat(True)
-        self.widget.tab1Btn.setMaximumSize(QSize(34, 20))
+        self.widget.tab1Btn.setMaximumWidth(32)
         
         for action in menuitems:
             menu.addAction(action)
@@ -325,11 +327,12 @@ class BuddyList(QWidget):
         layout.addWidget(label)
         item_widget = QWidget()
         item_widget.setLayout(layout)
-        item_widget.setMinimumSize(QSize(0, 24))
         self.widget.buddyTree.setItemWidget(item, 0, item_widget)
         self.group_items[group.name] = item
 
     def new_buddy_recv(self, emussa, buddy):
+        if buddy.ignored:
+            return
         item = BuddyItem(cyemussa.CyBuddy(buddy), False)
         parent_item = self.group_items[self.last_group_received.name]
         parent_item.addChild(item)
