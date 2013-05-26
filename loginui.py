@@ -3,26 +3,36 @@ from PyQt4 import uic
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
-import cyemussa
+import cyemussa, settingsManager
 from libemussa import callbacks as cb
 from libemussa import const
 from libemussa.im import Buddy, Status
 
 ym = cyemussa.CyEmussa.Instance()
+settings = settingsManager.Settings.Instance()
 
-class LoginWindow:
+class LoginWindow(QObject):
     def __init__(self, app):
+        QObject.__init__(app)
         self.app = app
+        self.widget = uic.loadUi('ui/login.ui')
+
+        # bind handlers and callbacks
+        self.widget.signInButton.clicked.connect(self.do_signin)
+        self.widget.invisibleCheckbox.stateChanged.connect(self.set_invisible_login)
+        self.app.will_close.connect(self.close)
+
         ym.register_callback(cb.EMUSSA_CALLBACK_ISCONNECTING, self.is_connecting)
         ym.register_callback(cb.EMUSSA_CALLBACK_CONNECTIONFAILED, self.connection_error)
         ym.register_callback(cb.EMUSSA_CALLBACK_SIGNINERROR, self.signin_error)
         ym.register_callback(cb.EMUSSA_CALLBACK_SELFCONTACT, self.signin_done)
 
-        self.widget = uic.loadUi('ui/login.ui')
-
-        # bind handlers
-        self.widget.signInButton.clicked.connect(self.do_signin)
-        self.widget.invisibleCheckbox.stateChanged.connect(self.set_invisible_login)
+        # load settings
+        self.widget.yahooID.setText(settings.username)
+        self.widget.yahooPasswd.setText(settings.password)
+        self.widget.rememberCheckbox.setChecked(settings.remember_me in [True, 'true'])
+        self.widget.invisibleCheckbox.setChecked(settings.signin_invisible in [True, 'true'])
+        self.widget.autoSignInCheckbox.setChecked(settings.signin_auto in [True, 'true'])
 
         # wait for user input
         self.animate_sleeping()
@@ -49,9 +59,16 @@ class LoginWindow:
         self.widget.loginAnimation.setMovie(movie)
         movie.start()
 
+    def auto_signin(self):
+        if self.widget.autoSignInCheckbox.isChecked() \
+        and self.widget.yahooID.text() \
+        and self.widget.yahooPasswd.text():
+            self.do_signin()
+
     def do_signin(self):
         yahoo_id = str(self.widget.yahooID.text())
         yahoo_passwd = str(self.widget.yahooPasswd.text())
+        self.save_settings()
         ym.signin(yahoo_id, yahoo_passwd)
 
     def is_connecting(self, emussa):
@@ -84,3 +101,21 @@ class LoginWindow:
 
     def show(self):
         self.widget.show()
+
+    def close(self):
+        ym.unregister_callback(cb.EMUSSA_CALLBACK_ISCONNECTING, self.is_connecting)
+        ym.unregister_callback(cb.EMUSSA_CALLBACK_CONNECTIONFAILED, self.connection_error)
+        ym.unregister_callback(cb.EMUSSA_CALLBACK_SIGNINERROR, self.signin_error)
+        ym.unregister_callback(cb.EMUSSA_CALLBACK_SELFCONTACT, self.signin_done)
+        self.save_settings()
+
+    def save_settings(self):
+        settings.remember_me = self.widget.rememberCheckbox.isChecked()
+        settings.signin_invisible = self.widget.invisibleCheckbox.isChecked()
+        settings.signin_auto = self.widget.autoSignInCheckbox.isChecked()
+        if settings.remember_me:
+            settings.username = str(self.widget.yahooID.text())
+            settings.password = str(self.widget.yahooPasswd.text())
+        else:
+            settings.username = ''
+            settings.password = ''

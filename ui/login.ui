@@ -185,7 +185,7 @@
             </widget>
            </item>
            <item>
-            <widget class="QCheckBox" name="checkBox_2">
+            <widget class="QCheckBox" name="autoSignInCheckbox">
              <property name="text">
               <string>Sign in automatically</string>
              </property>
@@ -244,6 +244,9 @@
           <property name="text">
            <string>Sign In</string>
           </property>
+          <property name="default">
+           <bool>true</bool>
+          </property>
          </widget>
         </item>
         <item>
@@ -297,5 +300,38 @@
   </layout>
  </widget>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>yahooID</sender>
+   <signal>returnPressed()</signal>
+   <receiver>signInButton</receiver>
+   <slot>click()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>163</x>
+     <y>180</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>163</x>
+     <y>421</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>yahooPasswd</sender>
+   <signal>returnPressed()</signal>
+   <receiver>signInButton</receiver>
+   <slot>click()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>163</x>
+     <y>223</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>163</x>
+     <y>421</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>

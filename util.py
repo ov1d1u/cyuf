@@ -1,5 +1,5 @@
 def pixmap_to_base64(pixmap):
-    import io as StringIO
+    import io as BytesIO
     import base64
     from PyQt4.QtCore import QBuffer, QByteArray, QIODevice
 
@@ -7,10 +7,10 @@ def pixmap_to_base64(pixmap):
     buffer = QBuffer(byte_array)
     buffer.open(QIODevice.WriteOnly)
     pixmap.save(buffer, 'PNG')
-    string_io = StringIO.StringIO(byte_array)
+    string_io = BytesIO.BytesIO(byte_array)
     string_io.seek(0)
 
-    return base64.b64encode(string_io.read())
+    return base64.b64encode(string_io.read()).decode()
 
 
 def sanitize_html(value):

@@ -129,9 +129,6 @@ class ChatWidget(QWidget):
     def close(self):
         # called by parent when the chat is closing
         ym.unregister_callback(cb.EMUSSA_CALLBACK_TYPING_NOTIFY, self._typing)
-        self.widget.sendButton.clicked.disconnect(self._send_message)
-        self.widget.messagesView.loadFinished.disconnect(self._document_ready)
-        self.cybuddy.update.disconnect(self._update_buddy)
         if self.typingTimer:
             ym.send_typing(self.cybuddy.yahoo_id, False)
 

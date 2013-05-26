@@ -4,12 +4,48 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from PyQt4.QtNetwork  import *
 
-import cyemussa
+import cyemussa, settingsManager
 from libemussa import callbacks as cb
 from libemussa.const import *
 import buddylist_rc, cyemussa, insider, chatwindow
 
 ym = cyemussa.CyEmussa.Instance()
+settings = settingsManager.Settings.Instance()
+
+
+class GroupItem(QTreeWidgetItem):
+    def __init__(self, group):
+        super(GroupItem, self).__init__()
+        self.group = group
+        self._initWidget()
+
+    def _initWidget(self):
+        self.widget = QWidget()
+        self.label = QLabel('<b>{0}</b>'.format(self.group.name))
+        layout = QHBoxLayout()
+        layout.addWidget(self.label)
+        self.widget.setLayout(layout)
+
+    def _count_onlines(self):
+        onlines = 0
+        for i in range(0, self.childCount()):
+            if self.child(i).cybuddy.status.online:
+                onlines += 1
+        return onlines
+
+    def addChild(self, child):
+        super(GroupItem, self).addChild(child)
+        self.updateCounter()
+
+    def updateCounter(self):
+        text = '<b>{0}</b>'.format(self.group.name)
+        on = self._count_onlines()
+        if settings.show_offlines:
+            text = '{0} ({1}/{2})'.format(text, on, self.childCount())
+        else:
+            text = '{0} ({1})'.format(text, on)
+        self.label.setText(text)
+
 
 class BuddyItem(QTreeWidgetItem):
     def __init__(self, cybuddy, compact = True):
@@ -54,6 +90,7 @@ class BuddyItem(QTreeWidgetItem):
 
         self.layout.addWidget(self.avatar_holder)
         self._setAvatar()
+        self.status_label.setText(self._get_link_from_status())
 
         if self.compact:
             self.layout.addWidget(self.icon_holder)
@@ -80,7 +117,7 @@ class BuddyItem(QTreeWidgetItem):
 
     def _get_link_from_status(self):
         sep = ''
-        if self.compact:
+        if self.compact and self._cybuddy.status.message:
             sep = ' - '
         statusmsg = self._cybuddy.status.message
         if 'http://' in statusmsg:
@@ -117,6 +154,14 @@ class BuddyItem(QTreeWidgetItem):
         else:
             self.icon_holder.setPixmap(QPixmap(":status/resources/user-offline.png"))
 
+        # auto hide if showing offline contacts is disabled
+        if not settings.show_offlines and not self._cybuddy.status.online:
+            self.setHidden(True)
+        else:
+            self.setHidden(False)
+        if self.parent():
+            self.parent().updateCounter()
+
     def _setAvatar(self):
         size = 16
         if not self.compact:
@@ -142,8 +187,9 @@ class BuddyItem(QTreeWidgetItem):
         self._update()
 
 
-class BuddyList(QWidget):
+class BuddyList(QWidget, QObject):
     def __init__(self, app):
+        QObject.__init__(app)
         super(BuddyList, self).__init__()
         self.widget = uic.loadUi('ui/buddylist.ui')
         self.app = app
@@ -157,31 +203,42 @@ class BuddyList(QWidget):
         ym.register_callback(cb.EMUSSA_CALLBACK_BUDDY_UPDATE, self.update_buddy)
         ym.register_callback(cb.EMUSSA_CALLBACK_MESSAGE_IN, self.received_message)
         self.app.me.update.connect(self._update_myself)
-
-        self.widget.insiderButton.clicked.connect(self.show_insider)
-        self.widget.customStatusCombo.lineEdit().setPlaceholderText("Have something to share?")
-        
+        self.widget.insiderButton.clicked.connect(self.show_insider)        
         # old-style connect to force the calling of activated(QString), not activated(int)
         self.widget.connect(self.widget.customStatusCombo, SIGNAL("activated(const QString&)"), self._set_status_text)
         self.widget.buddyTree.itemDoubleClicked.connect(self.btree_open_chat)
 
-        self._setup_tab_menus()
-        self._set_statuses()
+        self.widget.customStatusCombo.lineEdit().setPlaceholderText("Have something to share?")
+        self._build_tab_menus()
+        self._build_statuses()
         self._set_avatar()
         self._build_toolbar()
 
-    def _setup_tab_menus(self):
+    def _build_tab_menus(self):
         menu = QMenu()
         menuitems = []
 
+        action = QAction('Show offline contacts', menu, checkable = True)
+        action.setChecked(settings.show_offlines)
+        action.triggered.connect(self._filter_contacts)
+        menuitems.append(action)
+
+        action = QAction(self)
+        action.setSeparator(True)
+        menuitems.append(action)
+
         """ BuddyList style actions """
-        listStyleGroup = QActionGroup(self)
+        listStyleGroup = QActionGroup(self) # buddylist style QAction group
 
         action = QAction('Compact list', menu, checkable = True)
+        if settings.compact_list:
+            action.setChecked(True)
         action.triggered.connect(self._change_list_style(True))
         listStyleGroup.addAction(action)
 
         action = QAction('Detailed list', menu, checkable = True)
+        if not settings.compact_list:
+            action.setChecked(True)
         action.triggered.connect(self._change_list_style(False))
         listStyleGroup.addAction(action)
         
@@ -200,33 +257,26 @@ class BuddyList(QWidget):
 
         self.widget.tabWidget.tabBar().setTabButton(0, QTabBar.RightSide, self.widget.tab1Btn)
 
-    def _pop_tab_menu(self):
-        self.widget.tab1Btn.showMenu()
-
-    def _change_list_style(self, compact):
-        # function closure for change_list_style
-        def change_list_style():
-            for item in self.buddy_items:
-                self.buddy_items[item].compact = compact
-                self.widget.buddyTree.setItemWidget(self.buddy_items[item], 0, self.buddy_items[item].widget)
-            # hack to force properly update of buddyTree
-            self.widget.buddyTree.resize(self.widget.buddyTree.size().width() - 1, self.widget.buddyTree.size().height())
-            self.widget.buddyTree.resize(self.widget.buddyTree.size().width() + 1, self.widget.buddyTree.size().height())
-        return change_list_style
-
-    def _set_statuses(self):
+    def _build_statuses(self):
         self.statuses = [
             ['menu-user-online.png', 'Online', YAHOO_STATUS_AVAILABLE],
             ['menu-user-busy.png', 'Busy', YAHOO_STATUS_BUSY],
-            ['menu-user-invisible.png', 'Invisible', YAHOO_STATUS_INVISIBLE]
+            ['menu-user-invisible.png', 'Invisible', YAHOO_STATUS_INVISIBLE],
+            None,
+            ['menu-user-offline.png', 'Sign out', YAHOO_STATUS_STEPPEDOUT]
         ]
 
         menu = QMenu()
         for status in self.statuses:
-            pixmap = QPixmap(":status/resources/" + status[0])
-            action = QAction(QIcon(pixmap), status[1], self)
-            action.setData(status[2])
-            menu.addAction(action)
+            if not status:
+                action = QAction(self)
+                action.setSeparator(True)
+                menu.addAction(action)
+            else:
+                pixmap = QPixmap(":status/resources/" + status[0])
+                action = QAction(QIcon(pixmap), status[1], self)
+                action.setData(status[2])
+                menu.addAction(action)
         menu.triggered.connect(self._set_availability)
 
         self.widget.fakeStatusCombo.setMenu(menu)
@@ -250,6 +300,13 @@ class BuddyList(QWidget):
         else:
             avlbcode = int(action)
 
+        if avlbcode == YAHOO_STATUS_STEPPEDOUT:
+            self.sign_out()
+            return
+
+        if avlbcode == YAHOO_STATUS_INVISIBLE:
+            self.widget.customStatusCombo.lineEdit().setText('')
+
         if not avlbcode == self.app.me.status.code:
             # toggle visibility
             if avlbcode == YAHOO_STATUS_INVISIBLE:
@@ -258,17 +315,40 @@ class BuddyList(QWidget):
                 ym.toggle_visibility(False)
             self.app.me.status.code = avlbcode
 
-        if avlbcode == YAHOO_STATUS_INVISIBLE:
-            self.widget.customStatusCombo.lineEdit().setText('')
-
     def _set_status_text(self, text):
         if text and self.app.me.status.code == YAHOO_STATUS_INVISIBLE:
             self._set_availability(YAHOO_STATUS_AVAILABLE)
         ym.set_status(self.app.me.status.code, str(text))
 
+    def _pop_tab_menu(self):
+        self.widget.tab1Btn.showMenu()
+
+    def _change_list_style(self, compact):
+        # function closure for change_list_style
+        def change_list_style():
+            for item in self.buddy_items:
+                self.buddy_items[item].compact = compact
+                self.widget.buddyTree.setItemWidget(self.buddy_items[item], 0, self.buddy_items[item].widget)
+            # hack to force properly update of buddyTree
+            self.widget.buddyTree.resize(self.widget.buddyTree.size().width() - 1, self.widget.buddyTree.size().height())
+            self.widget.buddyTree.resize(self.widget.buddyTree.size().width() + 1, self.widget.buddyTree.size().height())
+            settings.compact_list = compact
+        return change_list_style
+
+    def _filter_contacts(self, show_offlines = None):
+        if not show_offlines == None:
+            settings.show_offlines = show_offlines
+        active = settings.show_offlines
+        iterator = QTreeWidgetItemIterator(self.widget.buddyTree)
+        while iterator.value():
+            if type(iterator.value()) == BuddyItem:
+                iterator.value()._update()
+            iterator += 1
+
     def _update_myself(self):
         icon = None
         for status in self.statuses:
+            if not status: continue
             if status[2] == self.app.me.status.code:
                 icon = QIcon(QPixmap(":status/resources/" + status[0]))
                 break
@@ -280,7 +360,7 @@ class BuddyList(QWidget):
 
     def _get_buddy(self, yahoo_id):
         if yahoo_id in self.buddy_items:
-            return self.buddy_items[yahoo_id]._cybuddy
+            return self.buddy_items[yahoo_id].cybuddy
         # create a new cybuddy
         cybuddy = cyemussa.CyBuddy()
         cybuddy.yahoo_id = yahoo_id
@@ -320,20 +400,16 @@ class BuddyList(QWidget):
 
     def new_group_recv(self, emussa, group):
         self.last_group_received = group
-        item = QTreeWidgetItem()
+        item = GroupItem(group)
         self.widget.buddyTree.addTopLevelItem(item)
-        layout = QHBoxLayout()
-        label = QLabel('<b>{0}</b>'.format(group.name))
-        layout.addWidget(label)
-        item_widget = QWidget()
-        item_widget.setLayout(layout)
-        self.widget.buddyTree.setItemWidget(item, 0, item_widget)
+        self.widget.buddyTree.setItemWidget(item, 0, item.widget)
         self.group_items[group.name] = item
 
     def new_buddy_recv(self, emussa, buddy):
         if buddy.ignored:
             return
-        item = BuddyItem(cyemussa.CyBuddy(buddy), False)
+        compact = settings.compact_list
+        item = BuddyItem(cyemussa.CyBuddy(buddy), compact)
         parent_item = self.group_items[self.last_group_received.name]
         parent_item.addChild(item)
         self.widget.buddyTree.setItemWidget(item, 0, item.widget)
@@ -356,4 +432,14 @@ class BuddyList(QWidget):
         chat.receive_message(message)
 
     def btree_open_chat(self, buddy_item):
-        chat = self._create_chat_for_buddy(buddy_item._cybuddy, True)
+        chat = self._create_chat_for_buddy(buddy_item.cybuddy, True)
+
+    def sign_out(self):
+        ym.signout()
+
+    def close(self, emussa = None):
+        ym.unregister_callback(cb.EMUSSA_CALLBACK_GROUP_RECEIVED, self.new_group_recv)
+        ym.unregister_callback(cb.EMUSSA_CALLBACK_BUDDY_RECEIVED, self.new_buddy_recv)
+        ym.unregister_callback(cb.EMUSSA_CALLBACK_BUDDY_UPDATE, self.update_buddy)
+        ym.unregister_callback(cb.EMUSSA_CALLBACK_MESSAGE_IN, self.received_message)
+        ym.unregister_callback(cb.EMUSSA_CALLBACK_SIGNED_OUT, self.close)
