@@ -154,7 +154,7 @@ class ChatWidget(QWidget):
         if not cymessage.sender:
             sender = self.me.yahoo_id
         else:
-            sender = self.me.display_name
+            sender = self.cybuddy.display_name
         if cymessage.offline:
             message = '(offline) {0}'.format(message)
         if cymessage.timestamp:
