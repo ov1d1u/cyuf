@@ -131,7 +131,6 @@ class BuddyItem(QTreeWidgetItem):
 
     def _get_link_from_status(self):
         sep = ''
-        print(self._cybuddy.status.message)
         if self.compact and self._cybuddy.status.message:
             sep = ' - '
         statusmsg = self._cybuddy.status.message
@@ -442,7 +441,6 @@ class BuddyList(QWidget, QObject):
         self.widget.buddyTree.setItemWidget(item, 0, item.widget)
         self.group_items[group.name] = item
         if group.name in settings.group_settings:
-            print(settings.group_settings)
             if 'collapsed' in settings.group_settings[group.name]:
                 item.setExpanded(not settings.group_settings[group.name]['collapsed'])
         else:
