@@ -256,6 +256,27 @@
             <property name="sizeConstraint">
              <enum>QLayout::SetDefaultConstraint</enum>
             </property>
+            <item>
+             <widget class="QToolButton" name="toolButton">
+              <property name="text">
+               <string>...</string>
+              </property>
+              <property name="icon">
+               <iconset resource="buddylist.qrc">
+                <normaloff>:/actions/resources/list-add-user.png</normaloff>:/actions/resources/list-add-user.png</iconset>
+              </property>
+              <property name="autoRaise">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="searchField">
+              <property name="placeholderText">
+               <string>Search contacts...</string>
+              </property>
+             </widget>
+            </item>
            </layout>
           </item>
          </layout>

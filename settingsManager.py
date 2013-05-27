@@ -41,3 +41,5 @@ class Settings:
 		self.keys['signin_invisible'] = False
 		self.keys['compact_list'] = False
 		self.keys['show_offlines'] = True
+		self.keys['group_settings'] = {}
+		self.keys['statuses'] = []

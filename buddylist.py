@@ -33,18 +33,32 @@ class GroupItem(QTreeWidgetItem):
                 onlines += 1
         return onlines
 
+    def _count_visibles(self):
+        visibles = 0
+        for i in range(0, self.childCount()):
+            if not self.child(i).isHidden():
+                visibles += 1
+        return visibles
+
     def addChild(self, child):
         super(GroupItem, self).addChild(child)
-        self.updateCounter()
+        self.update()
 
-    def updateCounter(self):
+    def update(self):
         text = '<b>{0}</b>'.format(self.group.name)
         on = self._count_onlines()
-        if settings.show_offlines:
-            text = '{0} ({1}/{2})'.format(text, on, self.childCount())
+        visibles = self._count_visibles()
+        if not visibles:
+            self.setHidden(True)
+        elif not on and not settings.show_offlines:
+            self.setHidden(True)
         else:
-            text = '{0} ({1})'.format(text, on)
-        self.label.setText(text)
+            self.setHidden(False)
+            if settings.show_offlines:
+                text = '{0} ({1}/{2})'.format(text, on, self.childCount())
+            else:
+                text = '{0} ({1})'.format(text, on)
+            self.label.setText(text)
 
 
 class BuddyItem(QTreeWidgetItem):
@@ -52,9 +66,9 @@ class BuddyItem(QTreeWidgetItem):
         super(BuddyItem, self).__init__()
         self.compact = compact
         self._cybuddy = cybuddy
-        self._cybuddy.update.connect(self._update)
         self._initWidget()
         self._update()
+        self._cybuddy.update.connect(self._update)
 
     def _initWidget(self):
         # create item's widget
@@ -117,6 +131,7 @@ class BuddyItem(QTreeWidgetItem):
 
     def _get_link_from_status(self):
         sep = ''
+        print(self._cybuddy.status.message)
         if self.compact and self._cybuddy.status.message:
             sep = ' - '
         statusmsg = self._cybuddy.status.message
@@ -153,13 +168,8 @@ class BuddyItem(QTreeWidgetItem):
         else:
             self.icon_holder.setPixmap(QPixmap(":status/resources/user-offline.png"))
 
-        # auto hide if showing offline contacts is disabled
-        if not settings.show_offlines and not self._cybuddy.status.online:
-            self.setHidden(True)
-        else:
-            self.setHidden(False)
-        if self.parent():
-            self.parent().updateCounter()
+        if self.parent(): # item doesn't have a parent() yet when it's created
+            self.parent().update()
 
     def _setAvatar(self):
         size = 16
@@ -207,18 +217,22 @@ class BuddyList(QWidget, QObject):
         # old-style connect to force the calling of activated(QString), not activated(int)
         self.widget.connect(self.widget.customStatusCombo, SIGNAL("activated(const QString&)"), self._set_status_text)
         self.widget.buddyTree.itemDoubleClicked.connect(self.btree_open_chat)
+        self.widget.buddyTree.itemCollapsed.connect(self._btree_expand_or_collapse)
+        self.widget.buddyTree.itemExpanded.connect(self._btree_expand_or_collapse)
+        self.widget.searchField.textChanged.connect(self._filter_contacts)
 
         self.widget.customStatusCombo.lineEdit().setPlaceholderText("Have something to share?")
+        self.widget.customStatusCombo.addItems(settings.statuses)
         self._build_tab_menus()
         self._build_statuses()
         self._set_avatar()
-        self._build_toolbar()
 
     def _build_tab_menus(self):
         menu = QMenu()
         menuitems = []
 
         action = QAction('Show offline contacts', menu, checkable = True)
+        action.setShortcut(QKeySequence('Ctrl+H'))
         action.setChecked(settings.show_offlines)
         action.triggered.connect(self._filter_contacts)
         menuitems.append(action)
@@ -286,14 +300,6 @@ class BuddyList(QWidget, QObject):
     def _set_avatar(self):
         self.widget.avatarButton.setIcon(QIcon(self.app.me.avatar.image))
 
-    def _build_toolbar(self):
-        self.toolbar = QToolBar(self)
-        self.toolbar.addAction(QIcon(QPixmap(":actions/resources/list-add-user.png")), 'Add cybuddy')
-        self.searchField = QLineEdit()
-        self.toolbar.setIconSize(QSize(16, 16))
-        self.widget.tbContainer.addWidget(self.toolbar)
-        self.widget.tbContainer.addWidget(self.searchField)
-
     def _set_availability(self, action):
         if type(action) == QAction:
             avlbcode = action.data()
@@ -319,6 +325,10 @@ class BuddyList(QWidget, QObject):
         if text and self.app.me.status.code == YAHOO_STATUS_INVISIBLE:
             self._set_availability(YAHOO_STATUS_AVAILABLE)
         ym.set_status(self.app.me.status.code, str(text))
+        statuses = settings.statuses
+        if not text in statuses:
+            statuses.append(text)
+        settings.statuses = statuses
 
     def _pop_tab_menu(self):
         self.widget.tab1Btn.showMenu()
@@ -335,18 +345,41 @@ class BuddyList(QWidget, QObject):
             settings.compact_list = compact
         return change_list_style
 
-    def _filter_contacts(self, show_offlines = None):
-        if not show_offlines == None:
-            settings.show_offlines = show_offlines
+    def _filter_contacts(self, filter):
+        # bool means that the filter was applied from 'Show offline buddies' menu
+        if type(filter) == bool:
+            settings.show_offlines = filter
         self._refresh_buddylist()
 
     def _refresh_buddylist(self):
         active = settings.show_offlines
         iterator = QTreeWidgetItemIterator(self.widget.buddyTree)
+        filtertext = self.widget.searchField.text()
+
         while iterator.value():
             if type(iterator.value()) == BuddyItem:
-                iterator.value()._update()
+                item = iterator.value()
+                if filtertext:
+                    self.widget.buddyTree.expandAll()
+                    searchables = [item.cybuddy.yahoo_id, item.cybuddy.contact.fname,
+                                    item.cybuddy.contact.lname, item.cybuddy.contact.nickname]
+                    if any(filtertext.lower() in field.lower() for field in searchables):
+                        item.setHidden(False)
+                    else:
+                        item.setHidden(True)
+                elif not settings.show_offlines and not item.cybuddy.status.online:
+                    item.setHidden(True)
+                else:
+                    item.setHidden(False)
             iterator += 1
+
+    def _btree_expand_or_collapse(self, item):
+        if not item.group.name in settings.group_settings:
+            settings.group_settings[item.group.name] = {}
+        settings.group_settings[item.group.name]['collapsed'] = not item.isExpanded()
+        # force setting value because changing dict content
+        # doesn't triggers __setattr__ in Settings() class
+        settings.settings.setValue('group_settings', settings.group_settings)
 
     def _update_myself(self):
         icon = None
@@ -408,6 +441,12 @@ class BuddyList(QWidget, QObject):
         self.widget.buddyTree.addTopLevelItem(item)
         self.widget.buddyTree.setItemWidget(item, 0, item.widget)
         self.group_items[group.name] = item
+        if group.name in settings.group_settings:
+            print(settings.group_settings)
+            if 'collapsed' in settings.group_settings[group.name]:
+                item.setExpanded(not settings.group_settings[group.name]['collapsed'])
+        else:
+            item.setExpanded(True)
 
     def new_buddy_recv(self, emussa, buddy):
         if buddy.ignored:
@@ -418,6 +457,8 @@ class BuddyList(QWidget, QObject):
         parent_item.addChild(item)
         self.widget.buddyTree.setItemWidget(item, 0, item.widget)
         self.buddy_items[buddy.yahoo_id] = item
+        # connect to buddy updates for updating its visibility in buddylist
+        item.cybuddy.update.connect(self._refresh_buddylist)
 
     def addressbook_recv(self, emussa, contacts):
         for contact in contacts:
