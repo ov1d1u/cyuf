@@ -370,6 +370,8 @@ class BuddyList(QWidget, QObject):
                     item.setHidden(True)
                 else:
                     item.setHidden(False)
+                # also update the group which owns the item
+                item.parent().update()
             iterator += 1
 
     def _btree_expand_or_collapse(self, item):
