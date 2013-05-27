@@ -89,6 +89,9 @@
    </property>
   </action>
  </widget>
+ <tabstops>
+  <tabstop>tabWidget</tabstop>
+ </tabstops>
  <resources>
   <include location="buddylist.qrc"/>
  </resources>

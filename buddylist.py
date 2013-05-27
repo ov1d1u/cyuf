@@ -136,9 +136,8 @@ class BuddyItem(QTreeWidgetItem):
             return '<font color="#8C8C8C">{0}{1}</font>'.format(sep, self._cybuddy.status.message)
 
     def _update(self):
-        #print 'cybuddy updated:', self._cybuddy.status.online
         self._setAvatar()
-        self.buddyname.setText(self._cybuddy.yahoo_id)
+        self.buddyname.setText('{0}'.format(self._cybuddy.display_name))
 
         self.status_label.setText('')
         if self._cybuddy.status.message:
@@ -200,6 +199,7 @@ class BuddyList(QWidget, QObject):
 
         ym.register_callback(cb.EMUSSA_CALLBACK_GROUP_RECEIVED, self.new_group_recv)
         ym.register_callback(cb.EMUSSA_CALLBACK_BUDDY_RECEIVED, self.new_buddy_recv)
+        ym.register_callback(cb.EMUSSA_CALLBACK_ADDRESSBOOK_RECEIVED, self.addressbook_recv)
         ym.register_callback(cb.EMUSSA_CALLBACK_BUDDY_UPDATE, self.update_buddy)
         ym.register_callback(cb.EMUSSA_CALLBACK_MESSAGE_IN, self.received_message)
         self.app.me.update.connect(self._update_myself)
@@ -338,6 +338,9 @@ class BuddyList(QWidget, QObject):
     def _filter_contacts(self, show_offlines = None):
         if not show_offlines == None:
             settings.show_offlines = show_offlines
+        self._refresh_buddylist()
+
+    def _refresh_buddylist(self):
         active = settings.show_offlines
         iterator = QTreeWidgetItemIterator(self.widget.buddyTree)
         while iterator.value():
@@ -357,6 +360,7 @@ class BuddyList(QWidget, QObject):
 
         ym.set_status(self.app.me.status.code, self.app.me.status.message)
         self.widget.avatarButton.setIcon(QIcon(self.app.me.avatar.image))
+        ym.get_addressbook()
 
     def _get_buddy(self, yahoo_id):
         if yahoo_id in self.buddy_items:
@@ -415,6 +419,11 @@ class BuddyList(QWidget, QObject):
         self.widget.buddyTree.setItemWidget(item, 0, item.widget)
         self.buddy_items[buddy.yahoo_id] = item
 
+    def addressbook_recv(self, emussa, contacts):
+        for contact in contacts:
+            if contact.yahoo_id and contact.yahoo_id in self.buddy_items:
+                self.buddy_items[contact.yahoo_id].cybuddy.contact = contact
+
     def update_buddy(self, emussa, cybuddy):
         for yid in self.buddy_items:
             if cybuddy.yahoo_id == yid:
@@ -426,7 +435,7 @@ class BuddyList(QWidget, QObject):
         if personal_msg.sender:
             cybuddy = self._get_buddy(personal_msg.sender)
         else:
-            # we sent this message, from another device
+            # we sent this message, but from another device
             cybuddy = self._get_buddy(personal_msg.receiver)
         chat = self._create_chat_for_buddy(cybuddy)
         chat.receive_message(message)
@@ -440,6 +449,7 @@ class BuddyList(QWidget, QObject):
     def close(self, emussa = None):
         ym.unregister_callback(cb.EMUSSA_CALLBACK_GROUP_RECEIVED, self.new_group_recv)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_BUDDY_RECEIVED, self.new_buddy_recv)
+        ym.unregister_callback(cb.EMUSSA_CALLBACK_ADDRESSBOOK_RECEIVED, self.addressbook_recv)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_BUDDY_UPDATE, self.update_buddy)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_MESSAGE_IN, self.received_message)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_SIGNED_OUT, self.close)

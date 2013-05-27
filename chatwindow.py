@@ -20,13 +20,17 @@ class ChatWindow(QObject):
         for chat in self.chatwidgets:
             if chat.cybuddy.yahoo_id == cybuddy.yahoo_id:
                 self.widget.tabWidget.setCurrentIndex(self.chatwidgets.index(chat))
+                chat.widget.textEdit.setFocus(Qt.ActiveWindowFocusReason)
+                self.widget.activateWindow()
                 return
 
         chat = ChatWidget(self, cybuddy)
         self.chatwidgets.append(chat)
-        self.widget.tabWidget.addTab(chat.widget, cybuddy.yahoo_id)
+        self.widget.tabWidget.addTab(chat.widget, cybuddy.display_name)
         self.widget.show()
         self.widget.tabWidget.setCurrentIndex(self.chatwidgets.index(chat))
+        chat.widget.textEdit.setFocus(Qt.ActiveWindowFocusReason)
+        self.widget.activateWindow()
 
     def close_tab(self, index):
         chat = None

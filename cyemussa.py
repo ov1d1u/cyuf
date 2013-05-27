@@ -101,6 +101,23 @@ class CyAvatar(QObject):
             self.sizes = {}
             self.image = pixmap
             self.update.emit()
+        else:
+            self.update.emit()
+
+class CyContact(im.Contact, QObject):
+    update = pyqtSignal()
+
+    def __init__(self, contact = None, parentbuddy = None):
+        QObject.__init__(self)
+        super(CyContact, self).__init__()
+        if contact:
+            self.__dict__.update(contact.__dict__)
+        
+        self._buddy = parentbuddy
+
+    def __setattr__(self, name, value):
+        super(CyContact, self).__setattr__(name, value)
+        self.update.emit()
 
 
 class CyBuddy(im.Buddy, QObject):
@@ -114,10 +131,13 @@ class CyBuddy(im.Buddy, QObject):
 
         if buddy:
             self.status = CyStatus(buddy.status, self)
+            self.display_name = buddy.yahoo_id
         else:
             self.status = CyStatus(None, self)
+            self.display_name = ''
             
         self.avatar = CyAvatar(self)
+        self.contact = CyContact(self)
 
         self.status.update.connect(self._emit_update)
         self.avatar.update.connect(self._emit_update)
@@ -125,6 +145,11 @@ class CyBuddy(im.Buddy, QObject):
     def __setattr__(self, name, value):
         if name == 'status' and value.__class__ == im.Status:
             value = CyStatus(value)
+        if name == 'contact':
+            if value.fname:
+                self.display_name = '{0} {1}'.format(value.fname, value.lname)
+            elif value.nickname:
+                self.display_name = '{0}'.format(value.nickname)
         super(CyBuddy, self).__setattr__(name, value)
         self._emit_update()
 

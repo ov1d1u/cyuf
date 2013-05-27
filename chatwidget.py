@@ -5,7 +5,8 @@ from PyQt4.QtNetwork  import *
 
 from libemussa.const import *
 from libemussa import callbacks as cb
-import cyemussa, util, datetime
+from emotes import emotes
+import cyemussa, util, datetime, re
 
 ym = cyemussa.CyEmussa.Instance()
 
@@ -47,12 +48,12 @@ class ChatWidget(QWidget):
         if self.me.status.code == YAHOO_STATUS_INVISIBLE:
             pixmap = QPixmap(":status/resources/user-invisible.png")
             self._add_info('You appear offline to ' + 
-                '<b>' + self.cybuddy.yahoo_id + '</b>',
+                '<b>' + self.cybuddy.display_name + '</b>',
                 pixmap
             )
         elif not self.cybuddy.status.online:
             pixmap = QPixmap(":status/resources/user-offline.png")
-            self._add_info('<b>' + self.cybuddy.yahoo_id + '</b>' + 
+            self._add_info('<b>' + self.cybuddy.display_name + '</b>' + 
                 ' seems to be offline and will receive your messages next time when he/she logs in.',
                 pixmap
             )
@@ -63,7 +64,7 @@ class ChatWidget(QWidget):
         self._javascript('show_timestamps', 'true')
 
     def _update_buddy(self):
-        self.widget.contactName.setText(self.cybuddy.yahoo_id)
+        self.widget.contactName.setText(self.cybuddy.display_name)
 
         if self.cybuddy.status.online:
             if self.cybuddy.status.idle_time:
@@ -114,11 +115,26 @@ class ChatWidget(QWidget):
             self._javascript('add_info', text)
 
     def _send_message(self):
-        message = util.sanitize_html(self.widget.textEdit.toPlainText())
+        raw_msg = self.widget.textEdit.toPlainText()
+        message = util.sanitize_html(raw_msg)
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         self.widget.textEdit.setDocument(QTextDocument())
-        ym.send_message(self.cybuddy.yahoo_id, str(message))
-        self._javascript('message_out', self.me.yahoo_id, message, timestamp)
+        ym.send_message(self.cybuddy.yahoo_id, str(raw_msg))
+        self._javascript('message_out', self.me.yahoo_id, self._text_to_emotes(raw_msg), timestamp)
+
+    def _text_to_emotes(self, text):
+        words = text.split()
+        for i, w in enumerate(words):
+            for emo in emotes:
+                pattern = re.compile(re.escape(emo), re.IGNORECASE)
+                word = pattern.sub(
+                    '<img src="{0}" alt="{1}" />'.format(emotes[emo], emo),
+                w)
+                if not word == w:           # a replacement was made, skip to the next word
+                    words[i] = word
+                    break
+        text = ' '.join(words)
+        return text
 
     def timerEvent(self, event):
         ym.send_typing(self.cybuddy.yahoo_id, False)
@@ -133,13 +149,14 @@ class ChatWidget(QWidget):
             ym.send_typing(self.cybuddy.yahoo_id, False)
 
     def receive_message(self, cymessage):
-        sender = cymessage.sender
         message = util.yahoo_rich_to_html(cymessage.message)
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        if not sender:
+        if not cymessage.sender:
             sender = self.me.yahoo_id
+        else:
+            sender = self.me.display_name
         if cymessage.offline:
             message = '(offline) {0}'.format(message)
         if cymessage.timestamp:
             timestamp = datetime.datetime.fromtimestamp(int(cymessage.timestamp)).strftime('%Y-%m-%d %H:%M:%S')
-        self._javascript('message_in', sender, util.sanitize_html(message), timestamp)
+        self._javascript('message_in', sender, self._text_to_emotes(util.sanitize_html(message)), timestamp)
