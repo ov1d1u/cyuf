@@ -80,10 +80,10 @@ class LoginWindow(QObject):
 
     def signin_error(self, emussa, e):
         self.animate_sleeping()
-        QMessageBox.critical(self.widget, 
+        QMessageBox.critical(self.app.mainw, 
             "Sign in error",
             "Error while signing in. Please check the provided credentials and try again.\n\n" + 
-            "Error reported by the backend: '{0}'".format(e[0].message)
+            "Error reported by the backend: '{0}'".format(e.message)
         )
 
     def signin_done(self, emussa, personal_info):
