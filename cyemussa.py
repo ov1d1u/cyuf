@@ -7,8 +7,9 @@ from PyQt4.QtGui import *
 from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkRequest
 
 from singleton import Singleton
-from libemussa import EmussaException, EmussaSession
-from libemussa import callbacks, im
+from libemussa import EmussaSession
+from libemussa import im
+
 
 @Singleton
 class CyEmussa(QThread, EmussaSession):
@@ -33,7 +34,7 @@ class CyEmussa(QThread, EmussaSession):
                         func(self, *args)
                     else:
                         func(self)
-                except Exception as e:
+                except:
                     print('CyEmussa: Error calling callback: {0}'.format(func))
                     print(traceback.format_exc())
 
@@ -47,22 +48,22 @@ class CyEmussa(QThread, EmussaSession):
 class CyStatus(im.Status, QObject):
     update = pyqtSignal()
 
-    def __init__(self, status = None, parentbuddy = None):
+    def __init__(self, status=None, parentbuddy=None):
         QObject.__init__(self)
         super(CyStatus, self).__init__()
         if status:
             self.__dict__.update(status.__dict__)
-        
         self._buddy = parentbuddy
 
     def __setattr__(self, name, value):
         super(CyStatus, self).__setattr__(name, value)
         self.update.emit()
 
+
 class CyAvatar(QObject):
     update = pyqtSignal()
 
-    def __init__(self, cybuddy = None):
+    def __init__(self, cybuddy=None):
         QObject.__init__(self)
         super(CyAvatar, self).__init__()
         self.buddy = cybuddy
@@ -72,7 +73,7 @@ class CyAvatar(QObject):
         if self.buddy:
             self.get_from_yahoo()
 
-    def scaled(self, px, pixmap = None):
+    def scaled(self, px, pixmap=None):
         image = self.image
         if pixmap:
             image = pixmap
@@ -104,15 +105,15 @@ class CyAvatar(QObject):
         else:
             self.update.emit()
 
+
 class CyContact(im.Contact, QObject):
     update = pyqtSignal()
 
-    def __init__(self, contact = None, parentbuddy = None):
+    def __init__(self, contact=None, parentbuddy=None):
         QObject.__init__(self)
         super(CyContact, self).__init__()
         if contact:
             self.__dict__.update(contact.__dict__)
-        
         self._buddy = parentbuddy
 
     def __setattr__(self, name, value):
@@ -123,7 +124,7 @@ class CyContact(im.Contact, QObject):
 class CyBuddy(im.Buddy, QObject):
     update = pyqtSignal()
 
-    def __init__(self, buddy = None):
+    def __init__(self, buddy=None):
         QObject.__init__(self)
         super(CyBuddy, self).__init__()
         if buddy:
@@ -135,7 +136,7 @@ class CyBuddy(im.Buddy, QObject):
         else:
             self.status = CyStatus(None, self)
             self.display_name = ''
-            
+
         self.avatar = CyAvatar(self)
         self.contact = CyContact(self)
 
@@ -156,13 +157,13 @@ class CyBuddy(im.Buddy, QObject):
     def _emit_update(self):
         self.update.emit()
 
+
 class CyPersonalMessage(im.PersonalMessage, QObject):
-    def __init__(self, personal_msg = None):
+    def __init__(self, personal_msg=None):
         QObject.__init__(self)
         super(CyPersonalMessage, self).__init__()
         if personal_msg:
             self.__dict__.update(personal_msg.__dict__)
-        
+
     def __setattr__(self, name, value):
         super(CyPersonalMessage, self).__setattr__(name, value)
-    

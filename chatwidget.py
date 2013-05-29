@@ -127,9 +127,7 @@ class ChatWidget(QWidget):
         for i, w in enumerate(words):
             for emo in emotes:
                 pattern = re.compile(re.escape(emo), re.IGNORECASE)
-                word = pattern.sub(
-                    '<img src="{0}" alt="{1}" />'.format(emotes[emo], emo),
-                w)
+                word = pattern.sub('<img src="{0}" alt="{1}" />'.format(emotes[emo], emo), w)
                 if not word == w:           # a replacement was made, skip to the next word
                     words[i] = word
                     break
@@ -145,6 +143,7 @@ class ChatWidget(QWidget):
     def close(self):
         # called by parent when the chat is closing
         ym.unregister_callback(cb.EMUSSA_CALLBACK_TYPING_NOTIFY, self._typing)
+        self.cybuddy.update.disconnect(self._update_buddy)
         if self.typingTimer:
             ym.send_typing(self.cybuddy.yahoo_id, False)
 
