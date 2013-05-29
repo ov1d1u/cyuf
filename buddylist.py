@@ -201,8 +201,7 @@ class BuddyList(QWidget, QObject):
         self.chat_windows = []
         self.last_group_received = None
 
-        ym.register_callback(cb.EMUSSA_CALLBACK_GROUP_RECEIVED, self.new_group_recv)
-        ym.register_callback(cb.EMUSSA_CALLBACK_BUDDY_RECEIVED, self.new_buddy_recv)
+        ym.register_callback(cb.EMUSSA_CALLBACK_BUDDYLIST_RECEIVED, self._buddylist_received)
         ym.register_callback(cb.EMUSSA_CALLBACK_ADDRESSBOOK_RECEIVED, self.addressbook_recv)
         ym.register_callback(cb.EMUSSA_CALLBACK_BUDDY_UPDATE, self.update_buddy)
         ym.register_callback(cb.EMUSSA_CALLBACK_MESSAGE_IN, self.received_message)
@@ -290,6 +289,37 @@ class BuddyList(QWidget, QObject):
         self.widget.fakeStatusCombo.setMenu(menu)
         #self.widget.fakeStatusCombo.setText('{0} {1}'.format(self.app.me.contact.name, self.app.me.contact.surname))
         self.widget.fakeStatusCombo.setText('{0}'.format(self.app.me.nickname))
+
+    def _buddylist_received(self, emussa, buddylist):
+        for group in buddylist:
+            parent = self._new_group(group)
+            for buddy in buddylist[group]:
+                buddy = self._new_buddy(buddy, parent)
+
+    def _new_group(self, group):
+        item = GroupItem(group)
+        self.widget.buddyTree.addTopLevelItem(item)
+        self.widget.buddyTree.setItemWidget(item, 0, item.widget)
+        self.group_items[group.name] = item
+        if group.name in settings.group_settings:
+            if 'collapsed' in settings.group_settings[group.name]:
+                item.setExpanded(not settings.group_settings[group.name]['collapsed'])
+        else:
+            item.setExpanded(True)
+        return item
+
+    def _new_buddy(self, buddy, parent):
+        if buddy.ignored:
+            return
+        compact = settings.compact_list
+        item = BuddyItem(cyemussa.CyBuddy(buddy), compact)
+        parent.addChild(item)
+        self.widget.buddyTree.setItemWidget(item, 0, item.widget)
+        self.buddy_items[buddy.yahoo_id] = item
+        # connect to buddy updates for updating its visibility in buddylist
+        item.cybuddy.update.connect(self._filter_buddylist)
+        return item
+
 
     def _set_avatar(self):
         self.widget.avatarButton.setIcon(QIcon(self.app.me.avatar.image))
@@ -434,30 +464,6 @@ class BuddyList(QWidget, QObject):
             {'T': ym.t_cookie,
              'Y': ym.y_cookie})
 
-    def new_group_recv(self, emussa, group):
-        self.last_group_received = group
-        item = GroupItem(group)
-        self.widget.buddyTree.addTopLevelItem(item)
-        self.widget.buddyTree.setItemWidget(item, 0, item.widget)
-        self.group_items[group.name] = item
-        if group.name in settings.group_settings:
-            if 'collapsed' in settings.group_settings[group.name]:
-                item.setExpanded(not settings.group_settings[group.name]['collapsed'])
-        else:
-            item.setExpanded(True)
-
-    def new_buddy_recv(self, emussa, buddy):
-        if buddy.ignored:
-            return
-        compact = settings.compact_list
-        item = BuddyItem(cyemussa.CyBuddy(buddy), compact)
-        parent_item = self.group_items[self.last_group_received.name]
-        parent_item.addChild(item)
-        self.widget.buddyTree.setItemWidget(item, 0, item.widget)
-        self.buddy_items[buddy.yahoo_id] = item
-        # connect to buddy updates for updating its visibility in buddylist
-        item.cybuddy.update.connect(self._filter_buddylist)
-
     def addressbook_recv(self, emussa, contacts):
         for contact in contacts:
             if contact.yahoo_id and contact.yahoo_id in self.buddy_items:
@@ -486,8 +492,7 @@ class BuddyList(QWidget, QObject):
         ym.signout()
 
     def close(self, emussa=None):
-        ym.unregister_callback(cb.EMUSSA_CALLBACK_GROUP_RECEIVED, self.new_group_recv)
-        ym.unregister_callback(cb.EMUSSA_CALLBACK_BUDDY_RECEIVED, self.new_buddy_recv)
+        ym.unregister_callback(cb.EMUSSA_CALLBACK_BUDDYLIST_RECEIVED, self._buddylist_received)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_ADDRESSBOOK_RECEIVED, self.addressbook_recv)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_BUDDY_UPDATE, self.update_buddy)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_MESSAGE_IN, self.received_message)
