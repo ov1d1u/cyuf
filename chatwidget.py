@@ -1,7 +1,7 @@
 from PyQt4 import uic
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
-from PyQt4.QtNetwork  import *
+from PyQt4.QtNetwork import *
 
 from libemussa.const import *
 from libemussa import callbacks as cb
@@ -9,6 +9,7 @@ from emotes import emotes
 import cyemussa, util, datetime, re
 
 ym = cyemussa.CyEmussa.Instance()
+
 
 class ChatWidget(QWidget):
     def __init__(self, parent, cybuddy):
@@ -20,17 +21,20 @@ class ChatWidget(QWidget):
         self.typingTimer = None
         self.is_ready = False
         self.queue = []
-        
+
         ym.register_callback(cb.EMUSSA_CALLBACK_TYPING_NOTIFY, self._typing)
         self.widget.textEdit.keyPressEvent = self._writing_message
         self.widget.sendButton.clicked.connect(self._send_message)
         self.widget.myAvatar.setPixmap(self.me.avatar.image)
-        self.widget.hisAvatar.setPixmap(self.cybuddy.avatar.image)
 
         self.widget.messagesView.setUrl(QUrl('ui/resources/html/chat/index.html'))
         self.widget.messagesView.loadFinished.connect(self._document_ready)
         self.cybuddy.update.connect(self._update_buddy)
+        self.cybuddy.status.update.connect(self._update_status)
+        self.cybuddy.avatar.update.connect(self._update_avatar)
         self._update_buddy()
+        self._update_status()
+        self._update_avatar()
 
     def _javascript(self, function, *args):
         # if the document is not ready, wait a while until we start calling JS functions on it
@@ -47,16 +51,14 @@ class ChatWidget(QWidget):
         self.is_ready = True
         if self.me.status.code == YAHOO_STATUS_INVISIBLE:
             pixmap = QPixmap(":status/resources/user-invisible.png")
-            self._add_info('You appear offline to ' + 
-                '<b>' + self.cybuddy.display_name + '</b>',
-                pixmap
-            )
+            self._add_info('You appear offline to ' +
+                           '<b>' + self.cybuddy.display_name + '</b>',
+                           pixmap)
         elif not self.cybuddy.status.online:
             pixmap = QPixmap(":status/resources/user-offline.png")
-            self._add_info('<b>' + self.cybuddy.display_name + '</b>' + 
-                ' seems to be offline and will receive your messages next time when he/she logs in.',
-                pixmap
-            )
+            self._add_info('<b>' + self.cybuddy.display_name + '</b>' +
+                           ' seems to be offline and will receive your messages next time when he/she logs in.',
+                           pixmap)
 
         for task in self.queue:
             self._javascript(task[0], *task[1])
@@ -66,6 +68,7 @@ class ChatWidget(QWidget):
     def _update_buddy(self):
         self.widget.contactName.setText(self.cybuddy.display_name)
 
+    def _update_status(self):
         if self.cybuddy.status.online:
             if self.cybuddy.status.idle_time:
                 self.widget.contactStatus.setPixmap(QPixmap(":status/resources/user-away.png"))
@@ -75,6 +78,9 @@ class ChatWidget(QWidget):
                 self.widget.contactStatus.setPixmap(QPixmap(":status/resources/user-online.png"))
         else:
             self.widget.contactStatus.setPixmap(QPixmap(":status/resources/user-offline.png"))
+
+    def _update_avatar(self):
+        self.widget.hisAvatar.setPixmap(self.cybuddy.avatar.image)
 
     def _writing_message(self, e):
         if e.key() == Qt.Key_Return or e.key() == Qt.Key_Enter:

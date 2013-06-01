@@ -17,6 +17,7 @@ class GroupItem(QTreeWidgetItem):
         super(GroupItem, self).__init__()
         self.group = group
         self._initWidget()
+        self.setHidden(True)
 
     def _initWidget(self):
         self.widget = QWidget()
@@ -37,7 +38,10 @@ class GroupItem(QTreeWidgetItem):
 
     def addChild(self, child):
         super(GroupItem, self).addChild(child)
-        self.update()
+        if child.cybuddy.status.online:
+            child.setHidden(False)
+        else:
+            child.setHidden(True)
 
     def update(self):
         text = '<b>{0}</b>'.format(self.group.name)
@@ -64,6 +68,8 @@ class BuddyItem(QTreeWidgetItem):
         self._initWidget()
         self._update()
         self._cybuddy.update.connect(self._update)
+        self._cybuddy.update_status.connect(self._update_status)
+        self._cybuddy.update_avatar.connect(self._setAvatar)
 
     def _initWidget(self):
         # create item's widget
@@ -145,8 +151,13 @@ class BuddyItem(QTreeWidgetItem):
             return '<font color="#8C8C8C">{0}{1}</font>'.format(sep, self._cybuddy.status.message)
 
     def _update(self):
-        self._setAvatar()
         self.buddyname.setText('{0}'.format(self._cybuddy.display_name))
+
+    def _update_status(self):
+        if self._cybuddy.status.online:
+            self.setHidden(False)
+        else:
+            self.setHidden(True)
 
         self.status_label.setText('')
         if self._cybuddy.status.message:
@@ -205,7 +216,8 @@ class BuddyList(QWidget, QObject):
         ym.register_callback(cb.EMUSSA_CALLBACK_ADDRESSBOOK_RECEIVED, self.addressbook_recv)
         ym.register_callback(cb.EMUSSA_CALLBACK_BUDDY_UPDATE, self.update_buddy)
         ym.register_callback(cb.EMUSSA_CALLBACK_MESSAGE_IN, self.received_message)
-        self.app.me.update.connect(self._update_myself)
+        self.app.me.update_status.connect(self._update_myself)
+        self.app.me.update_avatar.connect(self._update_myself)
         self.widget.insiderButton.clicked.connect(self.show_insider)
         # old-style connect to force the calling of activated(QString), not activated(int)
         self.widget.connect(self.widget.customStatusCombo, SIGNAL("activated(const QString&)"), self._set_status_text)
@@ -296,6 +308,8 @@ class BuddyList(QWidget, QObject):
             for buddy in buddylist[group]:
                 buddy = self._new_buddy(buddy, parent)
 
+        ym.get_addressbook()
+
     def _new_group(self, group):
         item = GroupItem(group)
         self.widget.buddyTree.addTopLevelItem(item)
@@ -319,7 +333,6 @@ class BuddyList(QWidget, QObject):
         # connect to buddy updates for updating its visibility in buddylist
         item.cybuddy.update.connect(self._filter_buddylist)
         return item
-
 
     def _set_avatar(self):
         self.widget.avatarButton.setIcon(QIcon(self.app.me.avatar.image))
@@ -375,6 +388,10 @@ class BuddyList(QWidget, QObject):
             settings.show_offlines = filter
         self._filter_buddylist()
 
+        # update groups text
+        for gname in self.group_items:
+            self.group_items[gname].update()
+
     def _filter_buddylist(self):
         iterator = QTreeWidgetItemIterator(self.widget.buddyTree)
         filtertext = self.widget.searchField.text()
@@ -393,13 +410,10 @@ class BuddyList(QWidget, QObject):
                         item.setHidden(True)
                 elif not settings.show_offlines and not item.cybuddy.status.online:
                     item.setHidden(True)
+
                 else:
                     item.setHidden(False)
             iterator += 1
-
-        # update groups text
-        for gname in self.group_items:
-            self.group_items[gname].update()
 
     def _btree_expand_or_collapse(self, item):
         if not item.group.name in settings.group_settings:
@@ -419,10 +433,7 @@ class BuddyList(QWidget, QObject):
                 break
         if icon:
             self.widget.fakeStatusCombo.setIcon(icon)
-
-        ym.set_status(self.app.me.status.code, self.app.me.status.message)
         self.widget.avatarButton.setIcon(QIcon(self.app.me.avatar.image))
-        ym.get_addressbook()
 
     def _get_buddy(self, yahoo_id):
         if yahoo_id in self.buddy_items:

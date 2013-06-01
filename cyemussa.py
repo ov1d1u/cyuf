@@ -123,6 +123,8 @@ class CyContact(im.Contact, QObject):
 
 class CyBuddy(im.Buddy, QObject):
     update = pyqtSignal()
+    update_status = pyqtSignal()
+    update_avatar = pyqtSignal()
 
     def __init__(self, buddy=None):
         QObject.__init__(self)
@@ -140,8 +142,8 @@ class CyBuddy(im.Buddy, QObject):
         self.avatar = CyAvatar(self)
         self.contact = CyContact(self)
 
-        self.status.update.connect(self._emit_update)
-        self.avatar.update.connect(self._emit_update)
+        self.status.update.connect(self._emit_update(self.status))
+        self.avatar.update.connect(self._emit_update(self.avatar))
 
     def __setattr__(self, name, value):
         if name == 'status' and value.__class__ == im.Status:
@@ -152,10 +154,26 @@ class CyBuddy(im.Buddy, QObject):
             elif value.nickname:
                 self.display_name = '{0}'.format(value.nickname)
         super(CyBuddy, self).__setattr__(name, value)
-        self._emit_update()
 
-    def _emit_update(self):
-        self.update.emit()
+        if name == 'status':
+            self._emit_update(self.status)()
+        elif name == 'avatar':
+            self._emit_update(self.avatar)()
+        else:
+            self._emit_update(self)()
+
+    def _emit_update(self, obj):
+        sender = obj
+
+        def update_connector():
+            if sender.__class__ == CyStatus:
+                self.update_status.emit()
+            elif sender.__class__ == CyAvatar:
+                self.update_avatar.emit()
+            elif sender == self:
+                self.update.emit()
+
+        return update_connector
 
 
 class CyPersonalMessage(im.PersonalMessage, QObject):
