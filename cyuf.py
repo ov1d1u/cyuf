@@ -15,7 +15,7 @@ class Cyuf(QObject):
 
     def __init__(self):
         QObject.__init__(self)
-        self.app = QApplication(sys.argv)
+        self.qapp = QApplication(sys.argv)
         self.me = cyemussa.CyBuddy()         # our buddy instance
         self.init_emussa()
 
@@ -33,7 +33,7 @@ class Cyuf(QObject):
         # show the login form
         self.login()
 
-        self.app.exec_()
+        self.qapp.exec_()
         self.ym.disconnect()
         self.quit()
 

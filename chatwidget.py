@@ -65,6 +65,30 @@ class ChatWidget(QWidget):
         self.queue = []
         self._javascript('show_timestamps', 'true')
 
+    def _get_link_from_status(self):
+        sep = ''
+        statusmsg = self.cybuddy.status.message
+        if statusmsg:
+            sep = ' - '
+        if 'http://' in statusmsg:
+            href = statusmsg[statusmsg.index('http://'):].split(' ', 1)[0]
+            statusmsg = statusmsg.replace(href, '').lstrip().rstrip()
+            text = '<font color="#8C8C8C">{0}<a href="{1}">{2}</a></font>'.format(sep, href, statusmsg)
+            return [href, text]
+        elif 'https://' in statusmsg:
+            href = statusmsg[statusmsg.index('https://'):].split(' ', 1)[0]
+            statusmsg = statusmsg.replace(href, '').lstrip().rstrip()
+            text = '<font color="#8C8C8C">{0}<a href="{1}">{2}</a></font>'.format(sep, href, statusmsg)
+            return [href, text]
+        elif 'www.' in statusmsg:
+            href = statusmsg[statusmsg.index('www.'):].split(' ', 1)[0]
+            statusmsg = statusmsg.replace(href, '').lstrip().rstrip()
+            text = '<font color="#8C8C8C">{0}<a href="{1}">{2}</a></font>'.format(sep, href, statusmsg)
+            return [href, text]
+        else:
+            text = '<font color="#8C8C8C">{0}{1}</font>'.format(sep, self.cybuddy.status.message)
+            return ['', text]
+
     def _update_buddy(self):
         self.widget.contactName.setText(self.cybuddy.display_name)
 
@@ -76,8 +100,13 @@ class ChatWidget(QWidget):
                 self.widget.contactStatus.setPixmap(QPixmap(":status/resources/user-busy.png"))
             else:
                 self.widget.contactStatus.setPixmap(QPixmap(":status/resources/user-online.png"))
+            statusMsg = self._get_link_from_status()
+            self.widget.contactStatusText.setText(statusMsg[1])
+            self.widget.contactStatusText.setToolTip(statusMsg[0])
         else:
             self.widget.contactStatus.setPixmap(QPixmap(":status/resources/user-offline.png"))
+            self.widget.contactStatusText.setText('')
+            self.widget.contactStatusText.setToolTip('')
 
     def _update_avatar(self):
         self.widget.hisAvatar.setPixmap(self.cybuddy.avatar.image)

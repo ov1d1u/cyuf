@@ -1,9 +1,10 @@
 from PyQt4 import uic
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
-from PyQt4.QtNetwork  import *
+from PyQt4.QtNetwork import *
 
 from chatwidget import ChatWidget
+
 
 class ChatWindow(QObject):
     def __init__(self, app, cybuddy):
@@ -11,9 +12,11 @@ class ChatWindow(QObject):
         self.app = app
         self.chatwidgets = []
 
-        self.widget.setWindowTitle('{0} - Cyuf'.format(cybuddy.yahoo_id))
+        self.widget.setWindowTitle('{0} - Cyuf'.format(cybuddy.display_name))
+        self.widget.setWindowIcon(QIcon(cybuddy.avatar.image))
         self.widget.setAttribute(Qt.WA_DeleteOnClose, True)
         self.widget.tabWidget.tabCloseRequested.connect(self.close_tab)
+        self.widget.tabWidget.currentChanged.connect(self.change_tab)
         self.new_chat(cybuddy)
 
     def new_chat(self, cybuddy):
@@ -31,6 +34,12 @@ class ChatWindow(QObject):
         self.widget.tabWidget.setCurrentIndex(self.chatwidgets.index(chat))
         chat.widget.textEdit.setFocus(Qt.ActiveWindowFocusReason)
         self.widget.activateWindow()
+
+    def change_tab(self, index):
+        if index < len(self.chatwidgets):
+            selected = self.chatwidgets[index]
+            self.widget.setWindowTitle('{0} - Cyuf'.format(selected.cybuddy.display_name))
+            self.widget.setWindowIcon(QIcon(selected.cybuddy.avatar.image))
 
     def close_tab(self, index):
         chat = None

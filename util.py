@@ -1,3 +1,7 @@
+from functools import wraps
+from time import time
+
+
 def pixmap_to_base64(pixmap):
     import io as BytesIO
     import base64
@@ -24,6 +28,7 @@ def sanitize_html(value):
 
     return soup.renderContents().decode()
 
+
 def yahoo_rich_to_html(text):
     import re
     message = text.replace('[1m', '<b>')
@@ -34,3 +39,14 @@ def yahoo_rich_to_html(text):
     message = message.replace('[x4m', '</u>')
     message = re.sub(r'\[#(.*?)m', r'<font color="#\1">', message)
     return message
+
+
+def timed(f):
+    @wraps(f)
+    def wrapper(*args, **kwds):
+        start = time()
+        result = f(*args, **kwds)
+        elapsed = time() - start
+        print("{0} took {1} time to finish".format(f.__name__, elapsed))
+        return result
+    return wrapper

@@ -16,6 +16,10 @@
   <property name="windowTitle">
    <string>Cyuf Messenger</string>
   </property>
+  <property name="windowIcon">
+   <iconset>
+    <normaloff>resources/cyuf.png</normaloff>resources/cyuf.png</iconset>
+  </property>
   <property name="windowOpacity">
    <double>1.000000000000000</double>
   </property>

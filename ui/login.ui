@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>328</width>
-    <height>634</height>
+    <height>662</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -31,10 +31,16 @@
      </item>
      <item>
       <widget class="QLabel" name="loginAnimation">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="minimumSize">
         <size>
          <width>135</width>
-         <height>117</height>
+         <height>150</height>
         </size>
        </property>
        <property name="maximumSize">
@@ -48,6 +54,9 @@
        </property>
        <property name="text">
         <string/>
+       </property>
+       <property name="pixmap">
+        <pixmap>resources/cyuf-nologin.png</pixmap>
        </property>
       </widget>
      </item>

@@ -46,18 +46,13 @@ class LoginWindow(QObject):
     def animate_sleeping(self):
         for widget in self.widget.findChildren((QLineEdit, QCheckBox, QPushButton, QMenuBar)):
             widget.setEnabled(True)
-        # create animation
-        movie = QMovie('ui/resources/sleeping.gif')
-        self.widget.loginAnimation.setMovie(movie)
-        movie.start()
 
     def animate_connecting(self):
         for widget in self.widget.findChildren((QLineEdit, QCheckBox, QPushButton, QMenuBar)):
             widget.setEnabled(False)
         # create animation
-        movie = QMovie('ui/resources/joy.gif')
-        self.widget.loginAnimation.setMovie(movie)
-        movie.start()
+        pixmap = QPixmap('ui/resources/cyuf-loggedin.png')
+        self.widget.loginAnimation.setPixmap(pixmap)
 
     def auto_signin(self):
         if self.widget.autoSignInCheckbox.isChecked() \
@@ -80,24 +75,27 @@ class LoginWindow(QObject):
 
     def signin_error(self, emussa, e):
         self.animate_sleeping()
-        QMessageBox.critical(self.app.mainw, 
-            "Sign in error",
-            "Error while signing in. Please check the provided credentials and try again.\n\n" + 
-            "Error reported by the backend: '{0}'".format(e.message)
-        )
+        QMessageBox.critical(self.app.mainw,
+                             "Sign in error",
+                             "Error while signing in. Please check the provided credentials and try again.\n\n" +
+                             "Error reported by the backend: '{0}'".format(e.message)
+                             )
 
     def signin_done(self, emussa, personal_info):
         if self.widget.invisibleCheckbox.isChecked():
             emussa.toggle_visibility(True)
-        buddy = Buddy()
+        buddy = cyemussa.CyBuddy()
         buddy.yahoo_id = personal_info.yahoo_id
         buddy.nickname = personal_info.yahoo_id
+        buddy.contact.fname = personal_info.name
+        buddy.contact.lname = personal_info.surname
+        buddy.avatar.get_from_yahoo()
 
         if emussa.is_invisible:
             buddy.status.code = const.YAHOO_STATUS_INVISIBLE
         else:
             buddy.status.code = const.YAHOO_STATUS_AVAILABLE
-        self.app.signed_in(cyemussa.CyBuddy(buddy))    # todo: change this into a signal
+        self.app.signed_in(buddy)    # todo: change this into a signal
 
     def show(self):
         self.widget.show()

@@ -141,6 +141,7 @@ class CyBuddy(im.Buddy, QObject):
 
         self.avatar = CyAvatar(self)
         self.contact = CyContact(self)
+        self.group = ''
 
         self.status.update.connect(self._emit_update(self.status))
         self.avatar.update.connect(self._emit_update(self.avatar))
