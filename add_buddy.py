@@ -81,14 +81,14 @@ class ChangeName(QObject):
 
 
 class AddBuddyWizard(QObject):
-    def __init__(self, parent):
+    def __init__(self, parent, yahoo_id=None):
         QObject.__init__(parent)
         super(AddBuddyWizard, self).__init__()
         self.parent = parent
         self.success = False
         self.timeout = False
-        self.fname = self.parent.app.me.contact.fname
-        self.lname = self.parent.app.me.contact.lname
+        self.fname = ym.me.contact.fname
+        self.lname = ym.me.contact.lname
 
         self.wizard = uic.loadUi('ui/add_buddy.ui')
         self.wizard.setWindowFlags(Qt.Dialog)
@@ -98,6 +98,9 @@ class AddBuddyWizard(QObject):
             self.lname)
         )
 
+        if yahoo_id:
+            self.wizard.buddyID.setText(yahoo_id)
+
         ym.register_callback(cb.EMUSSA_CALLBACK_ADDRESPONSE, self._request_response)
         self.wizard.currentIdChanged.connect(self._page_changed)
         self.wizard.buddyID.textChanged.connect(self._id_changed)
@@ -106,7 +109,8 @@ class AddBuddyWizard(QObject):
         self.wizard.closeEvent = self._closeEvent
 
         self.wizard.show()
-        self.wizard.button(QWizard.NextButton).setEnabled(False)
+        if not yahoo_id:
+            self.wizard.button(QWizard.NextButton).setEnabled(False)
         self._populateGroups()
 
     def _id_changed(self, text):
@@ -170,14 +174,11 @@ The operation may have succeeded. Please check your Messenger List later."""
             if not self.wizard.buddyID.text():
                 return 0
             # check if buddyID already exists
-            iterator = QTreeWidgetItemIterator(self.parent.widget.buddyTree)
-            while iterator.value():
-                if iterator.value().__class__.__name__ == 'BuddyItem':
-                    if iterator.value().cybuddy.yahoo_id == self.wizard.buddyID.text():
-                        text = '{0} already exists in your Messenger List.'.format(self.wizard.buddyID.text())
-                        self.wizard.alreadyExistsText.setText(text)
-                        return 1
-                iterator += 1
+            for yahoo_id in ym.buddy_items:
+                if yahoo_id == self.wizard.buddyID.text():
+                    text = '{0} already exists in your Messenger List.'.format(self.wizard.buddyID.text())
+                    self.wizard.alreadyExistsText.setText(text)
+                    return 1
             return 2
         if self.wizard.currentId() == 1:    # buddy already exists page
             return -1
@@ -199,11 +200,8 @@ The operation may have succeeded. Please check your Messenger List later."""
         return -1
 
     def _populateGroups(self):
-        iterator = QTreeWidgetItemIterator(self.parent.widget.buddyTree)
-        while iterator.value():
-            if iterator.value().__class__.__name__ == 'GroupItem':
-                self.wizard.groupsCombo.addItem(iterator.value().group.name, None)
-            iterator += 1
+        for group_name in ym.group_items:
+            self.wizard.groupsCombo.addItem(group_name, None)
 
     def _add_from_addressbook(self):
         def addressbook_finished(address):

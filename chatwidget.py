@@ -7,6 +7,7 @@ from libemussa.const import *
 from libemussa import callbacks as cb
 from emotes import emotes
 import cyemussa, util, datetime, re
+from add_buddy import AddBuddyWizard
 
 ym = cyemussa.CyEmussa.Instance()
 
@@ -16,7 +17,6 @@ class ChatWidget(QWidget):
         super(ChatWidget, self).__init__()
         self.widget = uic.loadUi('ui/chatwidget.ui')
         self.parent_window = parent
-        self.me = parent.app.me
         self.cybuddy = cybuddy
         self.typingTimer = None
         self.is_ready = False
@@ -25,16 +25,21 @@ class ChatWidget(QWidget):
         ym.register_callback(cb.EMUSSA_CALLBACK_TYPING_NOTIFY, self._typing)
         self.widget.textEdit.keyPressEvent = self._writing_message
         self.widget.sendButton.clicked.connect(self._send_message)
-        self.widget.myAvatar.setPixmap(self.me.avatar.image)
+        self.widget.myAvatar.setPixmap(ym.me.avatar.image)
 
         self.widget.messagesView.setUrl(QUrl('ui/resources/html/chat/index.html'))
         self.widget.messagesView.loadFinished.connect(self._document_ready)
         self.cybuddy.update.connect(self._update_buddy)
         self.cybuddy.status.update.connect(self._update_status)
         self.cybuddy.avatar.update.connect(self._update_avatar)
+        self.widget.addUserBtn.clicked.connect(self.add_buddy)
+
         self._update_buddy()
         self._update_status()
         self._update_avatar()
+        if cybuddy.yahoo_id in ym.buddy_items:
+            self.widget.addUserBtn.setHidden(True)
+            self.widget.ignoreUserBtn.setHidden(True)
 
     def _javascript(self, function, *args):
         # if the document is not ready, wait a while until we start calling JS functions on it
@@ -49,7 +54,7 @@ class ChatWidget(QWidget):
 
     def _document_ready(self):
         self.is_ready = True
-        if self.me.status.code == YAHOO_STATUS_INVISIBLE:
+        if ym.me.status.code == YAHOO_STATUS_INVISIBLE:
             pixmap = QPixmap(":status/resources/user-invisible.png")
             self._add_info('You appear offline to ' +
                            '<b>' + self.cybuddy.display_name + '</b>',
@@ -130,8 +135,8 @@ class ChatWidget(QWidget):
         sender = tn.sender
         if not sender:
             # we are typing this from somewhere else
-            sender = self.me.yahoo_id
-        if not sender == self.me.yahoo_id and not sender == self.cybuddy.yahoo_id:
+            sender = ym.me.yahoo_id
+        if not sender == ym.me.yahoo_id and not sender == self.cybuddy.yahoo_id:
             return
         if tn.status:
             self._javascript('start_typing', sender)
@@ -155,7 +160,7 @@ class ChatWidget(QWidget):
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         self.widget.textEdit.setDocument(QTextDocument())
         ym.send_message(self.cybuddy.yahoo_id, str(raw_msg))
-        self._javascript('message_out', self.me.yahoo_id, self._text_to_emotes(raw_msg), timestamp)
+        self._javascript('message_out', ym.me.yahoo_id, self._text_to_emotes(raw_msg), timestamp)
 
     def _text_to_emotes(self, text):
         words = text.split()
@@ -182,11 +187,14 @@ class ChatWidget(QWidget):
         if self.typingTimer:
             ym.send_typing(self.cybuddy.yahoo_id, False)
 
+    def add_buddy(self):
+        self.add_buddy_wizard = AddBuddyWizard(self, self.cybuddy.yahoo_id)
+
     def receive_message(self, cymessage):
         message = util.yahoo_rich_to_html(cymessage.message)
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         if not cymessage.sender:
-            sender = self.me.yahoo_id
+            sender = ym.me.yahoo_id
         else:
             sender = self.cybuddy.display_name
         if cymessage.offline:

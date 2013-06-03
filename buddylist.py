@@ -237,10 +237,10 @@ class BuddyList(QWidget, QObject):
         super(BuddyList, self).__init__()
         self.widget = uic.loadUi('ui/buddylist.ui')
         self.app = app
-        self.group_items = {}
-        self.buddy_items = {}
-        self.known_buddies = []  # all known buddies, not just the ones in our buddylist
-        self.chat_windows = []
+        ym.group_items = {}
+        ym.buddy_items = {}
+        ym.known_buddies = []  # all known buddies, not just the ones in our buddylist
+        ym.chat_windows = []
         self.last_group_received = None
 
         ym.register_callback(cb.EMUSSA_CALLBACK_BUDDYLIST_RECEIVED, self._buddylist_received)
@@ -250,8 +250,8 @@ class BuddyList(QWidget, QObject):
         ym.register_callback(cb.EMUSSA_CALLBACK_ADD_AUTHRESPONSE, self.add_request_response)
         ym.register_callback(cb.EMUSSA_CALLBACK_REMOVEBUDDY, self._remove_buddy_remote)
         ym.register_callback(cb.EMUSSA_CALLBACK_MOVEBUDDY, self._move_buddy_remote)
-        self.app.me.update_status.connect(self._update_myself)
-        self.app.me.update_avatar.connect(self._update_myself)
+        ym.me.update_status.connect(self._update_myself)
+        ym.me.update_avatar.connect(self._update_myself)
         self.widget.insiderButton.clicked.connect(self.show_insider)
         # old-style connect to force the calling of activated(QString), not activated(int)
         self.widget.connect(self.widget.customStatusCombo, SIGNAL("activated(const QString&)"), self._set_status_text)
@@ -363,8 +363,8 @@ class BuddyList(QWidget, QObject):
         menu.triggered.connect(self._set_availability)
 
         self.widget.fakeStatusCombo.setMenu(menu)
-        #self.widget.fakeStatusCombo.setText('{0} {1}'.format(self.app.me.contact.name, self.app.me.contact.surname))
-        self.widget.fakeStatusCombo.setText('{0}'.format(self.app.me.nickname))
+        #self.widget.fakeStatusCombo.setText('{0} {1}'.format(ym.me.contact.name, ym.me.contact.surname))
+        self.widget.fakeStatusCombo.setText('{0}'.format(ym.me.nickname))
 
     def _buddylist_context_menu(self, event):
         item = self.widget.buddyTree.currentItem()
@@ -529,15 +529,15 @@ class BuddyList(QWidget, QObject):
                 buddy = self._new_buddy(buddy, parent)
 
         # update groups text
-        for gname in self.group_items:
-            self.group_items[gname].update()
+        for gname in ym.group_items:
+            ym.group_items[gname].update()
         ym.get_addressbook()
 
     def _new_group(self, group):
         item = GroupItem(group)
         self.widget.buddyTree.addTopLevelItem(item)
         self.widget.buddyTree.setItemWidget(item, 0, item.widget)
-        self.group_items[group.name] = item
+        ym.group_items[group.name] = item
         if group.name in settings.group_settings:
             if 'collapsed' in settings.group_settings[group.name]:
                 item.setExpanded(not settings.group_settings[group.name]['collapsed'])
@@ -556,12 +556,12 @@ class BuddyList(QWidget, QObject):
         item = BuddyItem(cybuddy, compact)
         parent.addChild(item)
         self.widget.buddyTree.setItemWidget(item, 0, item.widget)
-        self.buddy_items[buddy.yahoo_id] = item
-        self.known_buddies.append(cybuddy)
+        ym.buddy_items[buddy.yahoo_id] = item
+        ym.known_buddies.append(cybuddy)
         return item
 
     def _set_avatar(self):
-        self.widget.avatarButton.setIcon(QIcon(self.app.me.avatar.image))
+        self.widget.avatarButton.setIcon(QIcon(ym.me.avatar.image))
 
     def _set_availability(self, action):
         if type(action) == QAction:
@@ -575,22 +575,22 @@ class BuddyList(QWidget, QObject):
 
         if avlbcode == YAHOO_STATUS_INVISIBLE:
             self.widget.customStatusCombo.lineEdit().setText('')
-            if not self.app.me.status.code == YAHOO_STATUS_INVISIBLE:
+            if not ym.me.status.code == YAHOO_STATUS_INVISIBLE:
                 ym.toggle_visibility(True)
 
-        elif self.app.me.status.code == YAHOO_STATUS_INVISIBLE:
+        elif ym.me.status.code == YAHOO_STATUS_INVISIBLE:
             if not avlbcode == YAHOO_STATUS_INVISIBLE:
                 ym.toggle_visibility(False)
 
         if not avlbcode == YAHOO_STATUS_INVISIBLE:
-            ym.set_status(avlbcode, self.app.me.status.message)
+            ym.set_status(avlbcode, ym.me.status.message)
 
-        self.app.me.status.code = avlbcode
+        ym.me.status.code = avlbcode
 
     def _set_status_text(self, text):
-        if text and self.app.me.status.code == YAHOO_STATUS_INVISIBLE:
+        if text and ym.me.status.code == YAHOO_STATUS_INVISIBLE:
             self._set_availability(YAHOO_STATUS_AVAILABLE)
-        ym.set_status(self.app.me.status.code, str(text))
+        ym.set_status(ym.me.status.code, str(text))
         statuses = settings.statuses
         if not text in statuses:
             statuses.append(text)
@@ -602,9 +602,9 @@ class BuddyList(QWidget, QObject):
     def _change_list_style(self, compact):
         # function closure for change_list_style
         def change_list_style():
-            for item in self.buddy_items:
-                self.buddy_items[item].compact = compact
-                self.widget.buddyTree.setItemWidget(self.buddy_items[item], 0, self.buddy_items[item].widget)
+            for item in ym.buddy_items:
+                ym.buddy_items[item].compact = compact
+                self.widget.buddyTree.setItemWidget(ym.buddy_items[item], 0, ym.buddy_items[item].widget)
             # hack to force properly update of buddyTree
             self.widget.buddyTree.resize(self.widget.buddyTree.size().width() - 1, self.widget.buddyTree.size().height())
             self.widget.buddyTree.resize(self.widget.buddyTree.size().width() + 1, self.widget.buddyTree.size().height())
@@ -628,8 +628,8 @@ class BuddyList(QWidget, QObject):
         self._filter_buddylist()
 
         # update groups text
-        for gname in self.group_items:
-            self.group_items[gname].update()
+        for gname in ym.group_items:
+            ym.group_items[gname].update()
 
     def _filter_buddylist(self):
         iterator = QTreeWidgetItemIterator(self.widget.buddyTree)
@@ -667,15 +667,15 @@ class BuddyList(QWidget, QObject):
         for status in self.statuses:
             if not status:
                 continue
-            if status[2] == self.app.me.status.code:
+            if status[2] == ym.me.status.code:
                 icon = QIcon(QPixmap(":status/resources/" + status[0]))
                 break
         if icon:
             self.widget.fakeStatusCombo.setIcon(icon)
-        self.widget.avatarButton.setIcon(QIcon(self.app.me.avatar.image))
+        self.widget.avatarButton.setIcon(QIcon(ym.me.avatar.image))
 
     def _get_buddy(self, yahoo_id):
-        for cybuddy in self.known_buddies:
+        for cybuddy in ym.known_buddies:
             if yahoo_id == cybuddy.yahoo_id:
                 return cybuddy
         # create a new cybuddy
@@ -683,7 +683,7 @@ class BuddyList(QWidget, QObject):
         cybuddy.yahoo_id = yahoo_id
         cybuddy.display_name = yahoo_id
         cybuddy.status = cyemussa.CyStatus()
-        self.known_buddies.append(cybuddy)
+        ym.known_buddies.append(cybuddy)
         return cybuddy
 
     def _get_item_for_buddy(self, yahoo_id):
@@ -697,7 +697,7 @@ class BuddyList(QWidget, QObject):
         return None
 
     def _create_chat_for_buddy(self, cybuddy, focus_chat=False):
-        for win in self.chat_windows:
+        for win in ym.chat_windows:
             for chat in win.chatwidgets:
                 if chat.cybuddy.yahoo_id == cybuddy.yahoo_id:
                     if focus_chat:
@@ -706,19 +706,19 @@ class BuddyList(QWidget, QObject):
 
         # no already opened chat, open a new one
         cybuddy = self._get_buddy(cybuddy.yahoo_id)
-        if not len(self.chat_windows):
+        if not len(ym.chat_windows):
             win = chatwindow.ChatWindow(self.app, cybuddy)
             win.widget.closeEvent = self._chatwindow_closed(win)
-            self.chat_windows.append(win)
+            ym.chat_windows.append(win)
         else:
-            win = self.chat_windows[0]
+            win = ym.chat_windows[0]
             win.new_chat(cybuddy)
         return win.chatwidgets[-1:][0]
 
     def _chatwindow_closed(self, window):
         def event_handler(event):
             window.close_all_tabs()
-            self.chat_windows.remove(window)
+            ym.chat_windows.remove(window)
         return event_handler
 
     def _add_buddy(self):
@@ -748,15 +748,15 @@ class BuddyList(QWidget, QObject):
 
     def addressbook_recv(self, emussa, contacts):
         for contact in contacts:
-            for cybuddy in self.known_buddies:
+            for cybuddy in ym.known_buddies:
                 if cybuddy.yahoo_id == contact.yahoo_id:
                     cybuddy.contact = contact
 
     def update_buddies(self, emussa, buddies):
         for cybuddy in buddies:
-            for yid in self.buddy_items:
+            for yid in ym.buddy_items:
                 if cybuddy.yahoo_id == yid:
-                    item = self.buddy_items[yid]
+                    item = ym.buddy_items[yid]
                     item.cybuddy.status = cybuddy.status
 
         self._filter_buddylist()
@@ -784,25 +784,25 @@ class BuddyList(QWidget, QObject):
         item = self._get_item_for_buddy(yahoo_id)
         if item:
             sip.delete(item)
-            del self.buddy_items[yahoo_id]
+            del ym.buddy_items[yahoo_id]
 
     def move_buddy(self, yahoo_id, group_name):
         item = self._get_item_for_buddy(yahoo_id)
         if item:
             # remove first from its current group
-            for group in self.group_items:
+            for group in ym.group_items:
                 if group == item.cybuddy.group.name:
-                    self.group_items[group].removeChild(item)
+                    ym.group_items[group].removeChild(item)
 
             # add it to the new group
-            for group in self.group_items:
+            for group in ym.group_items:
                 if group == group_name:
-                    self.group_items[group].addChild(item)
-                    item.cybuddy.group = self.group_items[group].group
+                    ym.group_items[group].addChild(item)
+                    item.cybuddy.group = ym.group_items[group].group
                     self.widget.buddyTree.setItemWidget(
-                        self.buddy_items[item.cybuddy.yahoo_id],
+                        ym.buddy_items[item.cybuddy.yahoo_id],
                         0,
-                        self.buddy_items[item.cybuddy.yahoo_id].widget
+                        ym.buddy_items[item.cybuddy.yahoo_id].widget
                     )
 
     def sign_out(self):

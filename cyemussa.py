@@ -15,6 +15,13 @@ from libemussa import im
 class CyEmussa(QThread, EmussaSession):
     signal = pyqtSignal(int, tuple)
 
+    # shared variables
+    group_items = {}
+    buddy_items = {}
+    known_buddies = []
+    chat_windows = []
+    me = None
+
     def __init__(self):
         QThread.__init__(self)
         EmussaSession.__init__(self)

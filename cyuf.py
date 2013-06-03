@@ -8,15 +8,16 @@ from PyQt4.QtGui import *
 import cyemussa, loginui, buddylist, settingsManager
 from libemussa import callbacks as cb
 settings = settingsManager.Settings.Instance()
+ym = cyemussa.CyEmussa.Instance()
+
 
 class Cyuf(QObject):
-    personal_info = None
+    buddylist = None
     will_close = pyqtSignal()
 
     def __init__(self):
         QObject.__init__(self)
         self.qapp = QApplication(sys.argv)
-        self.me = cyemussa.CyBuddy()         # our buddy instance
         self.init_emussa()
 
     def init_emussa(self):
@@ -44,16 +45,16 @@ class Cyuf(QObject):
 
     def signed_in(self, cybuddy):
         # TODO: change Buddy() class to have a Contact() property
-        self.me = cybuddy
+        ym.me = cybuddy
 
         # show the buddylist
         self.loginUI.close()
-        if hasattr(self, 'buddyList'):
-            self.buddyList.close()
-        self.buddyList = buddylist.BuddyList(self)
-        self.mainw.setCentralWidget(self.buddyList.widget)
+        if self.buddylist:
+            self.buddylist.close()
+        self.buddylist = buddylist.BuddyList(self)
+        self.mainw.setCentralWidget(self.buddylist.widget)
 
-    def disconnected(self, emussa = None):
+    def disconnected(self, emussa=None):
         self.loginUI = loginui.LoginWindow(self)
         self.mainw.setCentralWidget(self.loginUI.widget)
 
