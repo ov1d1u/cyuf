@@ -241,6 +241,7 @@ class BuddyList(QWidget, QObject):
         ym.buddy_items = {}
         ym.known_buddies = []  # all known buddies, not just the ones in our buddylist
         ym.chat_windows = []
+        ym.buddylistUI = self
         self.last_group_received = None
 
         ym.register_callback(cb.EMUSSA_CALLBACK_BUDDYLIST_RECEIVED, self._buddylist_received)
@@ -776,6 +777,11 @@ class BuddyList(QWidget, QObject):
         if auth.response == 2:
             from auth_response_dialog import AuthResponseDialog
             self.authresponse = AuthResponseDialog(self, auth)
+            return
+        buddyItem = self._get_item_for_buddy(auth.sender)
+        if buddyItem:
+            buddyItem.cybuddy.pending = False
+            buddyItem.cybuddy.status.message = ''
 
     def btree_open_chat(self, buddy_item):
         self._create_chat_for_buddy(buddy_item.cybuddy, True)

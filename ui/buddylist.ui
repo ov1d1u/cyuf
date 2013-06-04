@@ -221,6 +221,9 @@
        <string>Contacts</string>
       </attribute>
       <layout class="QVBoxLayout" name="verticalLayout_2">
+       <property name="spacing">
+        <number>0</number>
+       </property>
        <property name="topMargin">
         <number>0</number>
        </property>
@@ -312,7 +315,7 @@
           <number>-1</number>
          </property>
          <property name="indentation">
-          <number>16</number>
+          <number>20</number>
          </property>
          <property name="rootIsDecorated">
           <bool>true</bool>

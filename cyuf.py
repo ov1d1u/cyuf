@@ -18,6 +18,7 @@ class Cyuf(QObject):
     def __init__(self):
         QObject.__init__(self)
         self.qapp = QApplication(sys.argv)
+        #self.qapp.setStyle("Cleanlooks")
         self.init_emussa()
 
     def init_emussa(self):

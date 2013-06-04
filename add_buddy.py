@@ -5,6 +5,7 @@ from PyQt4.QtNetwork import *
 
 import cyemussa
 from libemussa import callbacks as cb
+from libemussa import im
 ym = cyemussa.CyEmussa.Instance()
 
 
@@ -135,10 +136,11 @@ class AddBuddyWizard(QObject):
                 self.wizard.buddyID.text(),
                 self.wizard.groupsCombo.currentText(),
                 self.wizard.plainTextEdit.toPlainText(),
-                'fname',
-                'lname',
+                self.fname,
+                self.lname,
                 1
             )
+
             self.timer = QTimer()
             self.timer.timeout.connect(self._timeout)
             self.timer.setSingleShot(True)
@@ -155,6 +157,20 @@ class AddBuddyWizard(QObject):
                 )
             )
         if self.wizard.currentId() == 5:
+            # Add buddy in our list, with append request set to True
+            if self.wizard.groupsCombo.currentText() in ym.group_items:
+                group_item = ym.group_items[self.wizard.groupsCombo.currentText()]
+            else:
+                new_group = im.Group()
+                new_group.name = self.wizard.groupsCombo.currentText()
+                group_item = ym.buddylistUI._new_group(new_group)
+
+            new_buddy = im.Buddy()
+            new_buddy.yahoo_id = self.wizard.buddyID.text()
+            new_buddy.pending = True
+            ym.buddylistUI._new_buddy(new_buddy, group_item)
+            group_item.update()
+
             self.wizard.labelSuccess.setText(
                 '{0} has been added to your Messenger List and Address Book, pending his or her response to your request.'
                 .format(self.wizard.buddyID.text()))

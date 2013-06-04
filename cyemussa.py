@@ -21,6 +21,7 @@ class CyEmussa(QThread, EmussaSession):
     known_buddies = []
     chat_windows = []
     me = None
+    buddylistUI = None
 
     def __init__(self):
         QThread.__init__(self)
