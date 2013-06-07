@@ -12,10 +12,10 @@ ym = cyemussa.CyEmussa.Instance()
 class AddBuddyAddressbook(QObject):
     finished = pyqtSignal(str)
 
-    def __init__(self, parent):
-        QObject.__init__(parent)
+    def __init__(self, app):
+        QObject.__init__(app)
         super(AddBuddyAddressbook, self).__init__()
-        self.parent = parent
+        self.app = app
 
         self.dialog = uic.loadUi('ui/add_buddy_addressbook.ui')
         self.dialog.setWindowFlags(Qt.Window | Qt.WindowCloseButtonHint)
@@ -66,8 +66,8 @@ class AddBuddyAddressbook(QObject):
 class ChangeName(QObject):
     finished = pyqtSignal(str, str)
 
-    def __init__(self, parent, fname, lname):
-        QObject.__init__(parent)
+    def __init__(self, app, fname, lname):
+        QObject.__init__(app)
         super(ChangeName, self).__init__()
         self.dialog = uic.loadUi('ui/add_buddy_changename.ui')
         self.dialog.accepted.connect(self._finished)
@@ -82,14 +82,14 @@ class ChangeName(QObject):
 
 
 class AddBuddyWizard(QObject):
-    def __init__(self, parent, yahoo_id=None):
-        QObject.__init__(parent)
+    def __init__(self, app, yahoo_id=None):
+        QObject.__init__(app)
         super(AddBuddyWizard, self).__init__()
-        self.parent = parent
+        self.app = app
         self.success = False
         self.timeout = False
-        self.fname = ym.me.contact.fname
-        self.lname = ym.me.contact.lname
+        self.fname = self.app.me.contact.fname
+        self.lname = self.app.me.contact.lname
 
         self.wizard = uic.loadUi('ui/add_buddy.ui')
         self.wizard.setWindowFlags(Qt.Dialog)
@@ -102,7 +102,7 @@ class AddBuddyWizard(QObject):
         if yahoo_id:
             self.wizard.buddyID.setText(yahoo_id)
 
-        ym.register_callback(cb.EMUSSA_CALLBACK_ADDRESPONSE, self._request_response)
+        ym.register_callback(cb.EMUSSA_CALLBACK_AUTH_RESPONSE, self._request_response)
         self.wizard.currentIdChanged.connect(self._page_changed)
         self.wizard.buddyID.textChanged.connect(self._id_changed)
         self.wizard.addFromAddressbook.clicked.connect(self._add_from_addressbook)
@@ -158,17 +158,17 @@ class AddBuddyWizard(QObject):
             )
         if self.wizard.currentId() == 5:
             # Add buddy in our list, with append request set to True
-            if self.wizard.groupsCombo.currentText() in ym.group_items:
-                group_item = ym.group_items[self.wizard.groupsCombo.currentText()]
+            if self.wizard.groupsCombo.currentText() in self.app.buddylist.group_items:
+                group_item = self.app.buddylist.group_items[self.wizard.groupsCombo.currentText()]
             else:
                 new_group = im.Group()
                 new_group.name = self.wizard.groupsCombo.currentText()
-                group_item = ym.buddylistUI._new_group(new_group)
+                group_item = self.app.buddylist.new_group(new_group)
 
             new_buddy = im.Buddy()
             new_buddy.yahoo_id = self.wizard.buddyID.text()
             new_buddy.pending = True
-            ym.buddylistUI._new_buddy(new_buddy, group_item)
+            self.app.buddylist.new_buddy(new_buddy, group_item)
             group_item.update()
 
             self.wizard.labelSuccess.setText(
@@ -190,7 +190,7 @@ The operation may have succeeded. Please check your Messenger List later."""
             if not self.wizard.buddyID.text():
                 return 0
             # check if buddyID already exists
-            for yahoo_id in ym.buddy_items:
+            for yahoo_id in self.app.buddylist.buddy_items:
                 if yahoo_id == self.wizard.buddyID.text():
                     text = '{0} already exists in your Messenger List.'.format(self.wizard.buddyID.text())
                     self.wizard.alreadyExistsText.setText(text)
@@ -216,7 +216,7 @@ The operation may have succeeded. Please check your Messenger List later."""
         return -1
 
     def _populateGroups(self):
-        for group_name in ym.group_items:
+        for group_name in self.app.buddylist.group_items:
             self.wizard.groupsCombo.addItem(group_name, None)
 
     def _add_from_addressbook(self):
@@ -234,14 +234,14 @@ The operation may have succeeded. Please check your Messenger List later."""
             self,
             self.fname,
             self.lname)
-        self.changename_dialog.finished.connect(change_name_finished)      
+        self.changename_dialog.finished.connect(change_name_finished)
 
     def _request_response(self, emussa, re):
         self.success = re.success
         self.wizard.next()
 
     def _closeEvent(self, event):
-        ym.unregister_callback(cb.EMUSSA_CALLBACK_ADDRESPONSE, self._request_response)
+        ym.unregister_callback(cb.EMUSSA_CALLBACK_AUTH_RESPONSE, self._request_response)
         event.accept()
 
     def _restart(self):

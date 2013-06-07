@@ -8,6 +8,8 @@ import cyemussa, settingsManager
 from libemussa import callbacks as cb
 from libemussa.const import *
 from add_buddy import AddBuddyWizard
+from auth_response_dialog import AuthResponseDialog
+from auth_request_dialog import AuthRequestDialog
 import buddylist_rc, insider, chatwindow
 
 ym = cyemussa.CyEmussa.Instance()
@@ -18,17 +20,16 @@ class GroupItem(QTreeWidgetItem):
     def __init__(self, group):
         super(GroupItem, self).__init__()
         self.group = group
-        self._initWidget()
         self.setHidden(True)
 
-    def _initWidget(self):
+        # Prepare item's widget
         self.widget = QWidget()
         self.label = QLabel('<b>{0}</b>'.format(self.group.name))
         layout = QHBoxLayout()
         layout.addWidget(self.label)
         self.widget.setLayout(layout)
 
-    def _count_visibles_onlines(self):  # merge these two methods for performance
+    def _count_visibles_onlines(self):
         onlines = 0
         visibles = 0
         for i in range(0, self.childCount()):
@@ -67,31 +68,10 @@ class BuddyItem(QTreeWidgetItem):
         super(BuddyItem, self).__init__()
         self.compact = compact
         self._cybuddy = cybuddy
-        self._initWidget()
-        self._update()
         self._cybuddy.update.connect(self._update)
         self._cybuddy.update_status.connect(self._update_status)
         self._cybuddy.update_avatar.connect(self._setAvatar)
 
-    def __lt__(self, otherItem):
-        if settings.buddylist_sort == 'name':
-            return self._cybuddy.display_name.lower() < otherItem.cybuddy.display_name.lower()
-        elif settings.buddylist_sort == 'availability':
-            if self._cybuddy.status.idle_time:
-                if not otherItem.cybuddy.status.online:
-                    return True
-                return False
-            if self._cybuddy.status.code == YAHOO_STATUS_BUSY:
-                if otherItem.cybuddy.status.online:
-                    return False
-                return True
-            if self._cybuddy.status.online:
-                return True
-            return False
-        else:
-            return self._cybuddy.display_name.lower() < otherItem.cybuddy.display_name.lower()
-
-    def _initWidget(self):
         # create item's widget
         self._widget = QWidget()
 
@@ -114,6 +94,27 @@ class BuddyItem(QTreeWidgetItem):
         self.status_label.setToolTip(statusText[0])
         self.status_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Expanding)
         self.status_label.setOpenExternalLinks(True)
+
+        # Call _update() to populate the widget's data
+        self._update()
+
+    def __lt__(self, otherItem):
+        if settings.buddylist_sort == 'name':
+            return self._cybuddy.display_name.lower() < otherItem.cybuddy.display_name.lower()
+        elif settings.buddylist_sort == 'availability':
+            if self._cybuddy.status.idle_time:
+                if not otherItem.cybuddy.status.online:
+                    return True
+                return False
+            if self._cybuddy.status.code == YAHOO_STATUS_BUSY:
+                if otherItem.cybuddy.status.online:
+                    return False
+                return True
+            if self._cybuddy.status.online:
+                return True
+            return False
+        else:
+            return self._cybuddy.display_name.lower() < otherItem.cybuddy.display_name.lower()
 
     def _setupLayout(self):
         self.layout = QHBoxLayout()
@@ -237,22 +238,24 @@ class BuddyList(QWidget, QObject):
         super(BuddyList, self).__init__()
         self.widget = uic.loadUi('ui/buddylist.ui')
         self.app = app
-        ym.group_items = {}
-        ym.buddy_items = {}
-        ym.known_buddies = []  # all known buddies, not just the ones in our buddylist
-        ym.chat_windows = []
-        ym.buddylistUI = self
+        self.group_items = {}
+        self.buddy_items = {}
+        self.known_buddies = []  # all known buddies, not just the ones in our buddylist
+        self.chat_windows = []
         self.last_group_received = None
 
         ym.register_callback(cb.EMUSSA_CALLBACK_BUDDYLIST_RECEIVED, self._buddylist_received)
         ym.register_callback(cb.EMUSSA_CALLBACK_ADDRESSBOOK_RECEIVED, self.addressbook_recv)
         ym.register_callback(cb.EMUSSA_CALLBACK_BUDDY_UPDATE_LIST, self.update_buddies)
         ym.register_callback(cb.EMUSSA_CALLBACK_MESSAGE_IN, self.received_message)
-        ym.register_callback(cb.EMUSSA_CALLBACK_ADD_AUTHRESPONSE, self.add_request_response)
+        ym.register_callback(cb.EMUSSA_CALLBACK_AUTH_REQUEST, self.add_request)
+        ym.register_callback(cb.EMUSSA_CALLBACK_AUTH_RESPONSE, self.add_request_response)
+        ym.register_callback(cb.EMUSSA_CALLBACK_AUTH_ACCEPTED, self.add_request_accepted)
+        ym.register_callback(cb.EMUSSA_CALLBACK_AUTH_REJECTED, self.add_request_rejected)
         ym.register_callback(cb.EMUSSA_CALLBACK_REMOVEBUDDY, self._remove_buddy_remote)
         ym.register_callback(cb.EMUSSA_CALLBACK_MOVEBUDDY, self._move_buddy_remote)
-        ym.me.update_status.connect(self._update_myself)
-        ym.me.update_avatar.connect(self._update_myself)
+        self.app.me.update_status.connect(self._update_myself)
+        self.app.me.update_avatar.connect(self._update_myself)
         self.widget.insiderButton.clicked.connect(self.show_insider)
         # old-style connect to force the calling of activated(QString), not activated(int)
         self.widget.connect(self.widget.customStatusCombo, SIGNAL("activated(const QString&)"), self._set_status_text)
@@ -265,27 +268,30 @@ class BuddyList(QWidget, QObject):
 
         self.widget.customStatusCombo.lineEdit().setPlaceholderText("Have something to share?")
         self.widget.customStatusCombo.addItems(settings.statuses)
-        self._build_tab_menus()
-        self._build_statuses()
         self._set_avatar()
 
-    def _build_tab_menus(self):
-        menu = QMenu()
+        ##################################################
+        ## Set up the UI elements (menus, buttons, etc) ##
+        ##################################################
+
+        # Buddylist menu
+        menu = QMenu(self)
         menuitems = []
 
+        # Action for showing offline contacts
         action = QAction('Show offline contacts', menu, checkable=True)
         action.setShortcut(QKeySequence('Ctrl+H'))
         action.setChecked(settings.show_offlines)
         action.triggered.connect(self._filter_contacts)
         menuitems.append(action)
 
+        # Separator
         action = QAction(self)
         action.setSeparator(True)
         menuitems.append(action)
 
-        """ BuddyList style actions """
+        # Actions for setting buddylist style (compact/detailed)
         listStyleGroup = QActionGroup(self)  # buddylist style QAction group
-
         action = QAction('Compact list', menu, checkable=True)
         if settings.compact_list:
             action.setChecked(True)
@@ -301,12 +307,13 @@ class BuddyList(QWidget, QObject):
         listStyleGroup.addAction(action)
 
         menuitems.extend(listStyleGroup.actions())
-        """ ---- """
 
+        # Separator
         action = QAction(self)
         action.setSeparator(True)
         menuitems.append(action)
 
+        # Actions for setting sorting mode
         sortByGroup = QActionGroup(self)  # buddylist style QAction group
 
         action = QAction('Sort by name', menu, checkable=True)
@@ -328,20 +335,19 @@ class BuddyList(QWidget, QObject):
         sortByGroup.addAction(action)
 
         menuitems.extend(sortByGroup.actions())
-
-        self.widget.tab1Btn = QPushButton()
-        self.widget.tab1Btn.setFlat(True)
-        self.widget.tab1Btn.setMaximumWidth(32)
-
         for action in menuitems:
             menu.addAction(action)
 
+        # Create a button and put it in the 'Buddylist' tab
+        self.widget.tab1Btn = QPushButton()
+        self.widget.tab1Btn.setFlat(True)
+        self.widget.tab1Btn.setMaximumWidth(32)
         self.widget.tab1Btn.setMenu(menu)
         self.widget.tab1Btn.clicked.connect(self._pop_tab_menu)
 
         self.widget.tabWidget.tabBar().setTabButton(0, QTabBar.RightSide, self.widget.tab1Btn)
 
-    def _build_statuses(self):
+        # Build status chooser menu
         self.statuses = [
             ['menu-user-online.png', 'Online', YAHOO_STATUS_AVAILABLE],
             ['menu-user-busy.png', 'Busy', YAHOO_STATUS_BUSY],
@@ -350,7 +356,7 @@ class BuddyList(QWidget, QObject):
             ['menu-user-offline.png', 'Sign out', YAHOO_STATUS_STEPPEDOUT]
         ]
 
-        menu = QMenu()
+        menu = QMenu(self)
         for status in self.statuses:
             if not status:
                 action = QAction(self)
@@ -364,8 +370,7 @@ class BuddyList(QWidget, QObject):
         menu.triggered.connect(self._set_availability)
 
         self.widget.fakeStatusCombo.setMenu(menu)
-        #self.widget.fakeStatusCombo.setText('{0} {1}'.format(ym.me.contact.name, ym.me.contact.surname))
-        self.widget.fakeStatusCombo.setText('{0}'.format(ym.me.nickname))
+        self.widget.fakeStatusCombo.setText('{0}'.format(self.app.me.nickname))
 
     def _buddylist_context_menu(self, event):
         item = self.widget.buddyTree.currentItem()
@@ -506,7 +511,7 @@ class BuddyList(QWidget, QObject):
         # Move to group
         def move_buddy():
             from move_buddy import MoveBuddyDialog
-            self.movedialog = MoveBuddyDialog(self, item.cybuddy)
+            self.movedialog = MoveBuddyDialog(self.app, item.cybuddy)
             self.movedialog.finished.connect(self._move_buddy)
         action = QAction('Move to Group...', menu)
         action.triggered.connect(move_buddy)
@@ -515,7 +520,7 @@ class BuddyList(QWidget, QObject):
         # Delete
         def remove_buddy():
             from remove_buddy import RemoveBuddyDialog
-            self.removedialog = RemoveBuddyDialog(self, item.cybuddy)
+            self.removedialog = RemoveBuddyDialog(self.app, item.cybuddy)
             self.removedialog.finished.connect(self._remove_buddy)
         action = QAction('Delete...', menu)
         action.triggered.connect(remove_buddy)
@@ -525,44 +530,17 @@ class BuddyList(QWidget, QObject):
 
     def _buddylist_received(self, emussa, buddylist):
         for group in buddylist:
-            parent = self._new_group(group)
+            parent = self.new_group(group)
             for buddy in buddylist[group]:
-                buddy = self._new_buddy(buddy, parent)
+                buddy = self.new_buddy(buddy, parent)
 
         # update groups text
-        for gname in ym.group_items:
-            ym.group_items[gname].update()
+        for gname in self.group_items:
+            self.group_items[gname].update()
         ym.get_addressbook()
 
-    def _new_group(self, group):
-        item = GroupItem(group)
-        self.widget.buddyTree.addTopLevelItem(item)
-        self.widget.buddyTree.setItemWidget(item, 0, item.widget)
-        ym.group_items[group.name] = item
-        if group.name in settings.group_settings:
-            if 'collapsed' in settings.group_settings[group.name]:
-                item.setExpanded(not settings.group_settings[group.name]['collapsed'])
-        else:
-            item.setExpanded(True)
-        return item
-
-    def _new_buddy(self, buddy, parent):
-        if buddy.ignored:
-            return
-        if buddy.pending:
-            buddy.status.message = '<i>Add request pending</i>'
-        compact = settings.compact_list
-        cybuddy = cyemussa.CyBuddy(buddy)
-        cybuddy.group = parent.group
-        item = BuddyItem(cybuddy, compact)
-        parent.addChild(item)
-        self.widget.buddyTree.setItemWidget(item, 0, item.widget)
-        ym.buddy_items[buddy.yahoo_id] = item
-        ym.known_buddies.append(cybuddy)
-        return item
-
     def _set_avatar(self):
-        self.widget.avatarButton.setIcon(QIcon(ym.me.avatar.image))
+        self.widget.avatarButton.setIcon(QIcon(self.app.me.avatar.image))
 
     def _set_availability(self, action):
         if type(action) == QAction:
@@ -576,22 +554,22 @@ class BuddyList(QWidget, QObject):
 
         if avlbcode == YAHOO_STATUS_INVISIBLE:
             self.widget.customStatusCombo.lineEdit().setText('')
-            if not ym.me.status.code == YAHOO_STATUS_INVISIBLE:
+            if not self.app.me.status.code == YAHOO_STATUS_INVISIBLE:
                 ym.toggle_visibility(True)
 
-        elif ym.me.status.code == YAHOO_STATUS_INVISIBLE:
+        elif self.app.me.status.code == YAHOO_STATUS_INVISIBLE:
             if not avlbcode == YAHOO_STATUS_INVISIBLE:
                 ym.toggle_visibility(False)
 
         if not avlbcode == YAHOO_STATUS_INVISIBLE:
-            ym.set_status(avlbcode, ym.me.status.message)
+            ym.set_status(avlbcode, self.app.me.status.message)
 
-        ym.me.status.code = avlbcode
+        self.app.me.status.code = avlbcode
 
     def _set_status_text(self, text):
-        if text and ym.me.status.code == YAHOO_STATUS_INVISIBLE:
+        if text and self.app.me.status.code == YAHOO_STATUS_INVISIBLE:
             self._set_availability(YAHOO_STATUS_AVAILABLE)
-        ym.set_status(ym.me.status.code, str(text))
+        ym.set_status(self.app.me.status.code, str(text))
         statuses = settings.statuses
         if not text in statuses:
             statuses.append(text)
@@ -603,9 +581,9 @@ class BuddyList(QWidget, QObject):
     def _change_list_style(self, compact):
         # function closure for change_list_style
         def change_list_style():
-            for item in ym.buddy_items:
-                ym.buddy_items[item].compact = compact
-                self.widget.buddyTree.setItemWidget(ym.buddy_items[item], 0, ym.buddy_items[item].widget)
+            for item in self.buddy_items:
+                self.buddy_items[item].compact = compact
+                self.widget.buddyTree.setItemWidget(self.buddy_items[item], 0, self.buddy_items[item].widget)
             # hack to force properly update of buddyTree
             self.widget.buddyTree.resize(self.widget.buddyTree.size().width() - 1, self.widget.buddyTree.size().height())
             self.widget.buddyTree.resize(self.widget.buddyTree.size().width() + 1, self.widget.buddyTree.size().height())
@@ -613,10 +591,6 @@ class BuddyList(QWidget, QObject):
         return change_list_style
 
     def _change_list_order(self, order):
-        # implying that we can add Yahoo! IDs from all the world
-        # and here we change the list's order
-        # we can say that this method is for implementing a 'new world order'
-
         def change_list_order():
             settings.buddylist_sort = order
             self.widget.buddyTree.sortItems(0, Qt.AscendingOrder)
@@ -629,8 +603,8 @@ class BuddyList(QWidget, QObject):
         self._filter_buddylist()
 
         # update groups text
-        for gname in ym.group_items:
-            ym.group_items[gname].update()
+        for gname in self.group_items:
+            self.group_items[gname].update()
 
     def _filter_buddylist(self):
         iterator = QTreeWidgetItemIterator(self.widget.buddyTree)
@@ -643,7 +617,7 @@ class BuddyList(QWidget, QObject):
                 item = iterator.value()
                 if filtertext:
                     searchables = [item.cybuddy.yahoo_id, item.cybuddy.contact.fname,
-                        item.cybuddy.contact.lname, item.cybuddy.contact.nickname]
+                                   item.cybuddy.contact.lname, item.cybuddy.contact.nickname]
                     if any(filtertext.lower() in field.lower() for field in searchables):
                         item.setHidden(False)
                     else:
@@ -659,8 +633,6 @@ class BuddyList(QWidget, QObject):
         if not item.group.name in settings.group_settings:
             settings.group_settings[item.group.name] = {}
         settings.group_settings[item.group.name]['collapsed'] = not item.isExpanded()
-        # force setting value because changing dict content
-        # doesn't triggers __setattr__ in Settings() class
         settings.settings.setValue('group_settings', settings.group_settings)
 
     def _update_myself(self):
@@ -668,15 +640,15 @@ class BuddyList(QWidget, QObject):
         for status in self.statuses:
             if not status:
                 continue
-            if status[2] == ym.me.status.code:
+            if status[2] == self.app.me.status.code:
                 icon = QIcon(QPixmap(":status/resources/" + status[0]))
                 break
         if icon:
             self.widget.fakeStatusCombo.setIcon(icon)
-        self.widget.avatarButton.setIcon(QIcon(ym.me.avatar.image))
+        self.widget.avatarButton.setIcon(QIcon(self.app.me.avatar.image))
 
     def _get_buddy(self, yahoo_id):
-        for cybuddy in ym.known_buddies:
+        for cybuddy in self.known_buddies:
             if yahoo_id == cybuddy.yahoo_id:
                 return cybuddy
         # create a new cybuddy
@@ -684,7 +656,7 @@ class BuddyList(QWidget, QObject):
         cybuddy.yahoo_id = yahoo_id
         cybuddy.display_name = yahoo_id
         cybuddy.status = cyemussa.CyStatus()
-        ym.known_buddies.append(cybuddy)
+        self.known_buddies.append(cybuddy)
         return cybuddy
 
     def _get_item_for_buddy(self, yahoo_id):
@@ -698,7 +670,7 @@ class BuddyList(QWidget, QObject):
         return None
 
     def _create_chat_for_buddy(self, cybuddy, focus_chat=False):
-        for win in ym.chat_windows:
+        for win in self.chat_windows:
             for chat in win.chatwidgets:
                 if chat.cybuddy.yahoo_id == cybuddy.yahoo_id:
                     if focus_chat:
@@ -707,23 +679,23 @@ class BuddyList(QWidget, QObject):
 
         # no already opened chat, open a new one
         cybuddy = self._get_buddy(cybuddy.yahoo_id)
-        if not len(ym.chat_windows):
+        if not len(self.chat_windows):
             win = chatwindow.ChatWindow(self.app, cybuddy)
             win.widget.closeEvent = self._chatwindow_closed(win)
-            ym.chat_windows.append(win)
+            self.chat_windows.append(win)
         else:
-            win = ym.chat_windows[0]
+            win = self.chat_windows[0]
             win.new_chat(cybuddy)
         return win.chatwidgets[-1:][0]
 
     def _chatwindow_closed(self, window):
         def event_handler(event):
             window.close_all_tabs()
-            ym.chat_windows.remove(window)
+            self.chat_windows.remove(window)
         return event_handler
 
     def _add_buddy(self):
-        self.wizard = AddBuddyWizard(self)
+        self.wizard = AddBuddyWizard(self.app)
 
     def _remove_buddy(self, cybuddy):
         ym.remove_buddy(cybuddy.yahoo_id, cybuddy.group.name)
@@ -749,19 +721,46 @@ class BuddyList(QWidget, QObject):
 
     def addressbook_recv(self, emussa, contacts):
         for contact in contacts:
-            for cybuddy in ym.known_buddies:
+            for cybuddy in self.known_buddies:
                 if cybuddy.yahoo_id == contact.yahoo_id:
                     cybuddy.contact = contact
 
     def update_buddies(self, emussa, buddies):
         for cybuddy in buddies:
-            for yid in ym.buddy_items:
+            for yid in self.buddy_items:
                 if cybuddy.yahoo_id == yid:
-                    item = ym.buddy_items[yid]
+                    item = self.buddy_items[yid]
                     item.cybuddy.status = cybuddy.status
 
         self._filter_buddylist()
         self.widget.buddyTree.sortItems(0, Qt.AscendingOrder)
+
+    def new_group(self, group):
+        item = GroupItem(group)
+        self.widget.buddyTree.addTopLevelItem(item)
+        self.widget.buddyTree.setItemWidget(item, 0, item.widget)
+        self.group_items[group.name] = item
+        if group.name in settings.group_settings:
+            if 'collapsed' in settings.group_settings[group.name]:
+                item.setExpanded(not settings.group_settings[group.name]['collapsed'])
+        else:
+            item.setExpanded(True)
+        return item
+
+    def new_buddy(self, buddy, parent):
+        if buddy.ignored:
+            return
+        if buddy.pending:
+            buddy.status.message = '<i>Add request pending</i>'
+        compact = settings.compact_list
+        cybuddy = cyemussa.CyBuddy(buddy)
+        cybuddy.group = parent.group
+        item = BuddyItem(cybuddy, compact)
+        parent.addChild(item)
+        self.widget.buddyTree.setItemWidget(item, 0, item.widget)
+        self.buddy_items[buddy.yahoo_id] = item
+        self.known_buddies.append(cybuddy)
+        return item
 
     def received_message(self, emussa, personal_msg):
         message = cyemussa.CyPersonalMessage(personal_msg)
@@ -773,15 +772,25 @@ class BuddyList(QWidget, QObject):
         chat = self._create_chat_for_buddy(cybuddy)
         chat.receive_message(message)
 
+    def add_request(self, emussa, auth):
+        # Somebody asks us to authorize his add request
+        self.authrequest = AuthRequestDialog(self.app, auth)
+        pass
+
     def add_request_response(self, emussa, auth):
-        if auth.response == 2:
-            from auth_response_dialog import AuthResponseDialog
-            self.authresponse = AuthResponseDialog(self, auth)
-            return
+        # This is called while adding a user in our buddylist
+        # and Yahoo! servers confirms the adding
         buddyItem = self._get_item_for_buddy(auth.sender)
         if buddyItem:
             buddyItem.cybuddy.pending = False
             buddyItem.cybuddy.status.message = ''
+
+    def add_request_accepted(self, emussa, auth):
+        # We should show something here?
+        pass
+
+    def add_request_rejected(self, emussa, auth):
+        self.authresponse = AuthResponseDialog(self.app, auth)
 
     def btree_open_chat(self, buddy_item):
         self._create_chat_for_buddy(buddy_item.cybuddy, True)
@@ -790,25 +799,25 @@ class BuddyList(QWidget, QObject):
         item = self._get_item_for_buddy(yahoo_id)
         if item:
             sip.delete(item)
-            del ym.buddy_items[yahoo_id]
+            del self.buddy_items[yahoo_id]
 
     def move_buddy(self, yahoo_id, group_name):
         item = self._get_item_for_buddy(yahoo_id)
         if item:
             # remove first from its current group
-            for group in ym.group_items:
+            for group in self.group_items:
                 if group == item.cybuddy.group.name:
-                    ym.group_items[group].removeChild(item)
+                    self.group_items[group].removeChild(item)
 
             # add it to the new group
-            for group in ym.group_items:
+            for group in self.group_items:
                 if group == group_name:
-                    ym.group_items[group].addChild(item)
-                    item.cybuddy.group = ym.group_items[group].group
+                    self.group_items[group].addChild(item)
+                    item.cybuddy.group = self.group_items[group].group
                     self.widget.buddyTree.setItemWidget(
-                        ym.buddy_items[item.cybuddy.yahoo_id],
+                        self.buddy_items[item.cybuddy.yahoo_id],
                         0,
-                        ym.buddy_items[item.cybuddy.yahoo_id].widget
+                        self.buddy_items[item.cybuddy.yahoo_id].widget
                     )
 
     def sign_out(self):
@@ -820,6 +829,9 @@ class BuddyList(QWidget, QObject):
         ym.unregister_callback(cb.EMUSSA_CALLBACK_BUDDY_UPDATE_LIST, self.update_buddies)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_MESSAGE_IN, self.received_message)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_SIGNED_OUT, self.close)
-        ym.unregister_callback(cb.EMUSSA_CALLBACK_ADD_AUTHRESPONSE, self.add_request_response)
+        ym.unregister_callback(cb.EMUSSA_CALLBACK_AUTH_REQUEST, self.add_request)
+        ym.unregister_callback(cb.EMUSSA_CALLBACK_AUTH_RESPONSE, self.add_request_response)
+        ym.unregister_callback(cb.EMUSSA_CALLBACK_AUTH_ACCEPTED, self.add_request_accepted)
+        ym.unregister_callback(cb.EMUSSA_CALLBACK_AUTH_REJECTED, self.add_request_rejected)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_REMOVEBUDDY, self._remove_buddy_remote)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_MOVEBUDDY, self._move_buddy_remote)

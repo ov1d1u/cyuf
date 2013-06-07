@@ -46,7 +46,7 @@ class Cyuf(QObject):
 
     def signed_in(self, cybuddy):
         # TODO: change Buddy() class to have a Contact() property
-        ym.me = cybuddy
+        self.me = cybuddy
 
         # show the buddylist
         self.loginUI.close()

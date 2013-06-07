@@ -17,6 +17,7 @@ class ChatWidget(QWidget):
         super(ChatWidget, self).__init__()
         self.widget = uic.loadUi('ui/chatwidget.ui')
         self.parent_window = parent
+        self.app = parent.app
         self.cybuddy = cybuddy
         self.typingTimer = None
         self.is_ready = False
@@ -25,7 +26,7 @@ class ChatWidget(QWidget):
         ym.register_callback(cb.EMUSSA_CALLBACK_TYPING_NOTIFY, self._typing)
         self.widget.textEdit.keyPressEvent = self._writing_message
         self.widget.sendButton.clicked.connect(self._send_message)
-        self.widget.myAvatar.setPixmap(ym.me.avatar.image)
+        self.widget.myAvatar.setPixmap(self.app.me.avatar.image)
 
         self.widget.messagesView.setUrl(QUrl('ui/resources/html/chat/index.html'))
         self.widget.messagesView.loadFinished.connect(self._document_ready)
@@ -37,7 +38,7 @@ class ChatWidget(QWidget):
         self._update_buddy()
         self._update_status()
         self._update_avatar()
-        if cybuddy.yahoo_id in ym.buddy_items:
+        if cybuddy.yahoo_id in self.app.buddylist.buddy_items:
             self.widget.addUserBtn.setHidden(True)
             self.widget.ignoreUserBtn.setHidden(True)
 
@@ -54,7 +55,7 @@ class ChatWidget(QWidget):
 
     def _document_ready(self):
         self.is_ready = True
-        if ym.me.status.code == YAHOO_STATUS_INVISIBLE:
+        if self.app.me.status.code == YAHOO_STATUS_INVISIBLE:
             pixmap = QPixmap(":status/resources/user-invisible.png")
             self._add_info('You appear offline to ' +
                            '<b>' + self.cybuddy.display_name + '</b>',
@@ -135,8 +136,8 @@ class ChatWidget(QWidget):
         sender = tn.sender
         if not sender:
             # we are typing this from somewhere else
-            sender = ym.me.yahoo_id
-        if not sender == ym.me.yahoo_id and not sender == self.cybuddy.yahoo_id:
+            sender = self.app.me.yahoo_id
+        if not sender == self.app.me.yahoo_id and not sender == self.cybuddy.yahoo_id:
             return
         if tn.status:
             self._javascript('start_typing', sender)
@@ -160,7 +161,7 @@ class ChatWidget(QWidget):
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         self.widget.textEdit.setDocument(QTextDocument())
         ym.send_message(self.cybuddy.yahoo_id, str(raw_msg))
-        self._javascript('message_out', ym.me.yahoo_id, self._text_to_emotes(raw_msg), timestamp)
+        self._javascript('message_out', self.app.me.yahoo_id, self._text_to_emotes(raw_msg), timestamp)
 
     def _text_to_emotes(self, text):
         words = text.split()
@@ -194,7 +195,7 @@ class ChatWidget(QWidget):
         message = util.yahoo_rich_to_html(cymessage.message)
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         if not cymessage.sender:
-            sender = ym.me.yahoo_id
+            sender = self.app.me.yahoo_id
         else:
             sender = self.cybuddy.display_name
         if cymessage.offline:
