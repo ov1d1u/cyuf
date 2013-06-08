@@ -266,8 +266,6 @@ class BuddyItem(QTreeWidgetItem):
                 contact = self.cybuddy.contact
                 contact.yahoo_id = self._cybuddy.yahoo_id
                 contact.nickname = new_name
-                contact.fname = 'Futui'
-                contact.lname = 'Ma-sa'
                 ym.update_contact(contact)
 
     def rowChanged(self):
