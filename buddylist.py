@@ -72,6 +72,11 @@ class BuddyItem(QTreeWidgetItem):
         self._cybuddy.update_status.connect(self._update_status)
         self._cybuddy.update_avatar.connect(self._setAvatar)
 
+        # Helper timer for renaming a buddy
+        self.timer = QTimer()
+        self.timer.setInterval(1000)
+        self.timer.timeout.connect(self._startRename)
+
         # create item's widget
         self._widget = QWidget()
 
@@ -86,6 +91,8 @@ class BuddyItem(QTreeWidgetItem):
 
         # cybuddy label
         self.buddyname = QLabel(self._cybuddy.yahoo_id)
+        self.buddyname.mousePressEvent = self._mousePress
+        self.buddyname.mouseReleaseEvent = self._mouseRelease
 
         # cybuddy status text
         self.status_label = QLabel()
@@ -213,6 +220,59 @@ class BuddyItem(QTreeWidgetItem):
             size = 32
         self.avatar_holder.setPixmap(self._cybuddy.avatar.scaled(size))
 
+    def _mousePress(self, event):
+        if event.button() == 1:
+            self.timer.start()
+        QWidget.mouseReleaseEvent(self._widget, event)
+
+    def _mouseRelease(self, event):
+        if event.button() == 1:
+            self.timer.stop()
+        QWidget.mouseReleaseEvent(self._widget, event)
+
+    def _startRename(self):
+        def keyPressed(event):
+            QWidget.keyPressEvent(self.lineEdit, event)
+            if event.key() == Qt.Key_Escape:
+                self._endRename(False)
+            elif event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return:
+                self._endRename(True)
+            else:
+                QLineEdit.keyPressEvent(self.lineEdit, event)
+        self.timer.stop()
+        self.lineEdit = QLineEdit()
+        self.lineEdit.keyPressEvent = keyPressed
+        self.lineEdit.setFrame(False)
+        self.lineEdit.resize(200, 20)
+        self.lineEdit.setText(self.buddyname.text())
+        self.lineEdit.selectAll()
+        self.lineEdit.setSizePolicy(QSizePolicy(QSizePolicy.Maximum, QSizePolicy.Minimum))
+        self.layout.removeWidget(self.buddyname)
+        self.buddyname.hide()
+        self.layout.insertWidget(2, self.lineEdit)
+        self.lineEdit.show()
+        self.lineEdit.setFocus()
+
+    def _endRename(self, save=False):
+        if hasattr(self, 'lineEdit'):
+            new_name = self.lineEdit.text()
+            self.layout.removeWidget(self.lineEdit)
+            self.lineEdit.close()
+            del self.lineEdit
+            self.layout.insertWidget(2, self.buddyname)
+            self.buddyname.show()
+            if save:
+                self.buddyname.setText(new_name)
+                contact = self.cybuddy.contact
+                contact.yahoo_id = self._cybuddy.yahoo_id
+                contact.nickname = new_name
+                contact.fname = 'Futui'
+                contact.lname = 'Ma-sa'
+                ym.update_contact(contact)
+
+    def rowChanged(self):
+        self._endRename()
+
     @property
     def widget(self):
         self._setupLayout()
@@ -263,6 +323,7 @@ class BuddyList(QWidget, QObject):
         self.widget.buddyTree.itemDoubleClicked.connect(self.btree_open_chat)
         self.widget.buddyTree.itemCollapsed.connect(self._btree_expand_or_collapse)
         self.widget.buddyTree.itemExpanded.connect(self._btree_expand_or_collapse)
+        self.widget.buddyTree.itemSelectionChanged.connect(self._btree_selection_changed)
         self.widget.searchField.textChanged.connect(self._filter_contacts)
         self.widget.addBuddyButton.clicked.connect(self._add_buddy)
 
@@ -634,6 +695,10 @@ class BuddyList(QWidget, QObject):
             settings.group_settings[item.group.name] = {}
         settings.group_settings[item.group.name]['collapsed'] = not item.isExpanded()
         settings.settings.setValue('group_settings', settings.group_settings)
+
+    def _btree_selection_changed(self):
+        for yid in self.buddy_items:
+            self.buddy_items[yid].rowChanged()
 
     def _update_myself(self):
         icon = None

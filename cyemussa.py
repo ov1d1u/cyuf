@@ -109,12 +109,11 @@ class CyAvatar(QObject):
 class CyContact(im.Contact, QObject):
     update = pyqtSignal()
 
-    def __init__(self, contact=None, parentbuddy=None):
+    def __init__(self, contact=None):
         QObject.__init__(self)
         super(CyContact, self).__init__()
         if contact:
             self.__dict__.update(contact.__dict__)
-        self._buddy = parentbuddy
 
     def __setattr__(self, name, value):
         super(CyContact, self).__setattr__(name, value)
@@ -150,10 +149,10 @@ class CyBuddy(im.Buddy, QObject):
         if name == 'status' and value.__class__ == im.Status:
             value = CyStatus(value)
         if name == 'contact':
-            if value.fname:
-                self.display_name = '{0} {1}'.format(value.fname, value.lname)
-            elif value.nickname:
+            if value.nickname:
                 self.display_name = '{0}'.format(value.nickname)
+            elif value.fname:
+                self.display_name = '{0} {1}'.format(value.fname, value.lname)
         super(CyBuddy, self).__setattr__(name, value)
 
         if name == 'status':
