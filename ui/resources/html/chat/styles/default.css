@@ -15,8 +15,26 @@ img {
   vertical-align: middle;
 }
 
+.infobox .buddyname {
+    font-weight: bold;
+}
+
+#statusbox {
+    background-color: #f0f6fb;
+    border-bottom: 1px solid #c1cdd7;
+    margin-top: 2px;
+    margin-bottom: 2px;
+    padding: 5px;
+    vertical-align: middle;
+}
+
 .message {
   margin-top: 2px;
+}
+
+.audible_message {
+    margin-top: 2px;
+    margin-left: 2px;
 }
 
 .timestamp {
@@ -40,6 +58,16 @@ img {
 .message_out .yahoo_id {
   font-weight: bold;
   color: #808080;
+}
+
+.audible_in .yahoo_id {
+    font-weight: bold;
+    color: #333399;
+}
+
+.audible_out .yahoo_id {
+    font-weight: bold;
+    color: #808080;
 }
 
 .typing {

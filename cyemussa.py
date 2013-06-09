@@ -124,6 +124,7 @@ class CyBuddy(im.Buddy, QObject):
     update = pyqtSignal()
     update_status = pyqtSignal()
     update_avatar = pyqtSignal()
+    update_all = pyqtSignal()
 
     def __init__(self, buddy=None):
         QObject.__init__(self)
@@ -172,6 +173,7 @@ class CyBuddy(im.Buddy, QObject):
                 self.update_avatar.emit()
             elif sender == self:
                 self.update.emit()
+            self.update_all.emit()
 
         return update_connector
 

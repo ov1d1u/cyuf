@@ -2,6 +2,7 @@ from PyQt4 import uic
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from PyQt4.QtNetwork import *
+from PyQt4.QtWebKit import QWebSettings
 
 from libemussa.const import *
 from libemussa import callbacks as cb
@@ -23,6 +24,10 @@ class ChatWidget(QWidget):
         self.is_ready = False
         self.queue = []
 
+        defaultSettings = QWebSettings.globalSettings()
+        defaultSettings.setAttribute(QWebSettings.JavascriptEnabled, True)
+        defaultSettings.setAttribute(QWebSettings.PluginsEnabled, True)
+
         ym.register_callback(cb.EMUSSA_CALLBACK_TYPING_NOTIFY, self._typing)
         self.widget.textEdit.keyPressEvent = self._writing_message
         self.widget.sendButton.clicked.connect(self._send_message)
@@ -31,8 +36,8 @@ class ChatWidget(QWidget):
         self.widget.messagesView.setUrl(QUrl('ui/resources/html/chat/index.html'))
         self.widget.messagesView.loadFinished.connect(self._document_ready)
         self.cybuddy.update.connect(self._update_buddy)
-        self.cybuddy.status.update.connect(self._update_status)
-        self.cybuddy.avatar.update.connect(self._update_avatar)
+        self.cybuddy.update_status.connect(self._update_status)
+        self.cybuddy.update_avatar.connect(self._update_avatar)
         self.widget.addUserBtn.clicked.connect(self.add_buddy)
 
         self._update_buddy()
@@ -57,13 +62,14 @@ class ChatWidget(QWidget):
         self.is_ready = True
         if self.app.me.status.code == YAHOO_STATUS_INVISIBLE:
             pixmap = QPixmap(":status/resources/user-invisible.png")
-            self._add_info('You appear offline to ' +
-                           '<b>' + self.cybuddy.display_name + '</b>',
-                           pixmap)
+            self._add_info('You appear offline to <span class="buddyname">{0}</span>'.format(
+                self.cybuddy.display_name)
+            )
         elif not self.cybuddy.status.online:
             pixmap = QPixmap(":status/resources/user-offline.png")
-            self._add_info('<b>' + self.cybuddy.display_name + '</b>' +
-                           ' seems to be offline and will receive your messages next time when he/she logs in.',
+            self._add_info('<span class="buddyname">{0}</span> seems to be offline and will'
+                           'receive your messages next time when he/she logs in.'
+                           .format(self.cybuddy.display_name),
                            pixmap)
 
         for task in self.queue:
@@ -97,15 +103,22 @@ class ChatWidget(QWidget):
 
     def _update_buddy(self):
         self.widget.contactName.setText(self.cybuddy.display_name)
+        self._javascript('update_buddy_name', self.cybuddy.display_name)
 
     def _update_status(self):
         if self.cybuddy.status.online:
             if self.cybuddy.status.idle_time:
                 self.widget.contactStatus.setPixmap(QPixmap(":status/resources/user-away.png"))
+                if self.sender().__class__.__name__ == 'CyBuddy':
+                    self._notify_status('is Idle.')
             elif self.cybuddy.status.code == YAHOO_STATUS_BUSY:
                 self.widget.contactStatus.setPixmap(QPixmap(":status/resources/user-busy.png"))
+                if self.sender().__class__.__name__ == 'CyBuddy':
+                    self._notify_status('is Busy.')
             else:
                 self.widget.contactStatus.setPixmap(QPixmap(":status/resources/user-online.png"))
+                if self.sender().__class__.__name__ == 'CyBuddy':
+                    self._notify_status('is now Available.')
             statusMsg = self._get_link_from_status()
             self.widget.contactStatusText.setText(statusMsg[1])
             self.widget.contactStatusText.setToolTip(statusMsg[0])
@@ -113,6 +126,15 @@ class ChatWidget(QWidget):
             self.widget.contactStatus.setPixmap(QPixmap(":status/resources/user-offline.png"))
             self.widget.contactStatusText.setText('')
             self.widget.contactStatusText.setToolTip('')
+            if self.sender().__class__.__name__ == 'CyBuddy':
+                self._notify_status('is now Offline.')
+
+    def _notify_status(self, message):
+        self._javascript('status_updated',
+                         '<span class="buddy_items">{0}</span> {1}'
+                         .format(self.cybuddy.display_name, message),
+                         util.pixmap_to_base64(self.widget.contactStatus.pixmap()),
+                         datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
     def _update_avatar(self):
         self.widget.hisAvatar.setPixmap(self.cybuddy.avatar.image)
@@ -144,12 +166,12 @@ class ChatWidget(QWidget):
         else:
             self._javascript('stop_typing')
 
-    def _add_info(self, text, pixmap = None):
+    def _add_info(self, text, pixmap=None):
         image = None
         if pixmap:
             image = util.pixmap_to_base64(pixmap)
 
-        text = util.sanitize_html(text)
+        # text = util.sanitize_html(text)
         if image:
             self._javascript('add_info', text, image)
         else:
@@ -157,7 +179,6 @@ class ChatWidget(QWidget):
 
     def _send_message(self):
         raw_msg = self.widget.textEdit.toPlainText()
-        message = util.sanitize_html(raw_msg)
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         self.widget.textEdit.setDocument(QTextDocument())
         ym.send_message(self.cybuddy.yahoo_id, str(raw_msg))
@@ -189,7 +210,7 @@ class ChatWidget(QWidget):
             ym.send_typing(self.cybuddy.yahoo_id, False)
 
     def add_buddy(self):
-        self.add_buddy_wizard = AddBuddyWizard(self, self.cybuddy.yahoo_id)
+        self.add_buddy_wizard = AddBuddyWizard(self.app, self.cybuddy.yahoo_id)
 
     def receive_message(self, cymessage):
         message = util.yahoo_rich_to_html(cymessage.message)
@@ -203,3 +224,19 @@ class ChatWidget(QWidget):
         if cymessage.timestamp:
             timestamp = datetime.datetime.fromtimestamp(int(cymessage.timestamp)).strftime('%Y-%m-%d %H:%M:%S')
         self._javascript('message_in', sender, self._text_to_emotes(util.sanitize_html(message)), timestamp)
+
+    def receive_audible(self, audible):
+        self.audible = audible
+        self.manager = QNetworkAccessManager()
+        self.manager.finished.connect(self.post_audible)
+        self.req = QNetworkRequest(QUrl(self.audible.url))
+        self.req.setRawHeader('User-agent', 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US)')
+        self.reply = self.manager.get(self.req)
+
+    def post_audible(self, swfdata):
+        tmpfile = QTemporaryFile('XXXXXX.swf', self.widget)
+        if tmpfile.open():
+            tmpfile.write(swfdata.readAll())
+            tmpfile.close()
+            timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            self._javascript('audible_in', self.audible.sender, tmpfile.fileName(), self.audible.message, timestamp)

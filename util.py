@@ -50,3 +50,17 @@ def timed(f):
         print("{0} took {1} time to finish".format(f.__name__, elapsed))
         return result
     return wrapper
+
+
+def grayscale_pixmap(pixmap):
+    from PyQt4.QtGui import qGray, qRgb
+    image = pixmap.toImage()
+    width = pixmap.width()
+    height = pixmap.height()
+    for i in range(0, width):
+        for j in range(0, height):
+            col = image.pixel(i, j)
+            gray = qGray(col)
+            image.setPixel(i, j, qRgb(gray, gray, gray))
+    pixmap = pixmap.fromImage(image)
+    return pixmap

@@ -69,6 +69,13 @@
     </spacer>
    </item>
    <item>
+    <widget class="QCheckBox" name="reverseDelete">
+     <property name="text">
+      <string>Remove me from his/her Messenger List</string>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QCheckBox" name="deleteAddressbook">
      <property name="text">
       <string>Delete from Address Book, too.</string>

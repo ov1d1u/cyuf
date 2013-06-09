@@ -7,7 +7,7 @@ from cyemussa import CyBuddy
 
 
 class RemoveBuddyDialog(QObject):
-    finished = pyqtSignal(CyBuddy)
+    finished = pyqtSignal(CyBuddy, bool, bool)
 
     def __init__(self, parent, cybuddy):
         QObject.__init__(parent)
@@ -21,4 +21,6 @@ class RemoveBuddyDialog(QObject):
         self.dialog.show()
 
     def _finished(self):
-        self.finished.emit(self.cybuddy)
+        self.finished.emit(self.cybuddy,
+                           self.dialog.deleteAddressbook.isChecked(),
+                           self.dialog.reverseDelete.isChecked())

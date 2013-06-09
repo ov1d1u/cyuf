@@ -246,23 +246,32 @@ class BuddyItem(QTreeWidgetItem):
         self.lineEdit.resize(200, 20)
         self.lineEdit.setText(self.buddyname.text())
         self.lineEdit.selectAll()
-        self.lineEdit.setSizePolicy(QSizePolicy(QSizePolicy.Maximum, QSizePolicy.Minimum))
-        self.layout.removeWidget(self.buddyname)
         self.buddyname.hide()
-        self.layout.insertWidget(2, self.lineEdit)
+        if self.compact:
+            self.lineEdit.setSizePolicy(QSizePolicy(QSizePolicy.Maximum, QSizePolicy.Expanding))
+            self.layout.removeWidget(self.buddyname)
+            self.layout.insertWidget(2, self.lineEdit)
+        else:
+            self.lineEdit.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Expanding)
+            self.horizontal_layout.removeWidget(self.buddyname)
+            self.horizontal_layout.insertWidget(1, self.lineEdit)
         self.lineEdit.show()
         self.lineEdit.setFocus()
 
     def _endRename(self, save=False):
         if hasattr(self, 'lineEdit'):
             new_name = self.lineEdit.text()
-            self.layout.removeWidget(self.lineEdit)
+            if self.compact:
+                self.layout.removeWidget(self.lineEdit)
+                self.layout.insertWidget(2, self.buddyname)
+            else:
+                self.horizontal_layout.removeWidget(self.lineEdit)
+                self.horizontal_layout.insertWidget(1, self.buddyname)
+            self.buddyname.show()
             self.lineEdit.close()
             del self.lineEdit
-            self.layout.insertWidget(2, self.buddyname)
-            self.buddyname.show()
             if save:
-                self.buddyname.setText(new_name)
+                self.cybuddy.display_name = new_name
                 contact = self.cybuddy.contact
                 contact.yahoo_id = self._cybuddy.yahoo_id
                 contact.nickname = new_name
@@ -306,6 +315,7 @@ class BuddyList(QWidget, QObject):
         ym.register_callback(cb.EMUSSA_CALLBACK_ADDRESSBOOK_RECEIVED, self.addressbook_recv)
         ym.register_callback(cb.EMUSSA_CALLBACK_BUDDY_UPDATE_LIST, self.update_buddies)
         ym.register_callback(cb.EMUSSA_CALLBACK_MESSAGE_IN, self.received_message)
+        ym.register_callback(cb.EMUSSA_CALLBACK_AUDIBLE_RECEIVED, self.received_audible)
         ym.register_callback(cb.EMUSSA_CALLBACK_AUTH_REQUEST, self.add_request)
         ym.register_callback(cb.EMUSSA_CALLBACK_AUTH_RESPONSE, self.add_request_response)
         ym.register_callback(cb.EMUSSA_CALLBACK_AUTH_ACCEPTED, self.add_request_accepted)
@@ -641,6 +651,7 @@ class BuddyList(QWidget, QObject):
         # function closure for change_list_style
         def change_list_style():
             for item in self.buddy_items:
+                self.buddy_items[item].rowChanged()
                 self.buddy_items[item].compact = compact
                 self.widget.buddyTree.setItemWidget(self.buddy_items[item], 0, self.buddy_items[item].widget)
             # hack to force properly update of buddyTree
@@ -760,8 +771,10 @@ class BuddyList(QWidget, QObject):
     def _add_buddy(self):
         self.wizard = AddBuddyWizard(self.app)
 
-    def _remove_buddy(self, cybuddy):
+    def _remove_buddy(self, cybuddy, rm_contact=False, reverse=False):
         ym.remove_buddy(cybuddy.yahoo_id, cybuddy.group.name)
+        if reverse:
+            ym.reject_auth_request(cybuddy.yahoo_id)
         self.remove_from_btree(cybuddy.yahoo_id)
 
     def _remove_buddy_remote(self, emussa, rem):
@@ -835,6 +848,15 @@ class BuddyList(QWidget, QObject):
         chat = self._create_chat_for_buddy(cybuddy)
         chat.receive_message(message)
 
+    def received_audible(self, emussa, audible):
+        if audible.sender:
+            cybuddy = self._get_buddy(audible.sender)
+        else:
+            # we sent this message, but from another device
+            cybuddy = self._get_buddy(audible.receiver)
+        chat = self._create_chat_for_buddy(cybuddy)
+        chat.receive_audible(audible)
+
     def add_request(self, emussa, auth):
         # Somebody asks us to authorize his add request
         self.authrequest = AuthRequestDialog(self.app, auth)
@@ -849,8 +871,9 @@ class BuddyList(QWidget, QObject):
             buddyItem.cybuddy.status.message = ''
 
     def add_request_accepted(self, emussa, auth):
-        # We should show something here?
-        pass
+        buddyItem = self._get_item_for_buddy(auth.sender)
+        buddyItem.cybuddy.status.pending = False
+        buddyItem.cybuddy.status.message = ''
 
     def add_request_rejected(self, emussa, auth):
         self.authresponse = AuthResponseDialog(self.app, auth)
@@ -891,6 +914,7 @@ class BuddyList(QWidget, QObject):
         ym.unregister_callback(cb.EMUSSA_CALLBACK_ADDRESSBOOK_RECEIVED, self.addressbook_recv)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_BUDDY_UPDATE_LIST, self.update_buddies)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_MESSAGE_IN, self.received_message)
+        ym.unregister_callback(cb.EMUSSA_CALLBACK_AUDIBLE_RECEIVED, self.received_audible)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_SIGNED_OUT, self.close)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_AUTH_REQUEST, self.add_request)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_AUTH_RESPONSE, self.add_request_response)
