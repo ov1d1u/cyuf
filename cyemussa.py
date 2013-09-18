@@ -17,7 +17,7 @@ class CyEmussa(QThread, EmussaSession):
 
     def __init__(self):
         QThread.__init__(self)
-        EmussaSession.__init__(self)
+        self.emussaSession = EmussaSession.__init__(self)
         self.signal.connect(self.handle_signal)
 
     def disconnect(self, *args):
@@ -67,6 +67,8 @@ class CyAvatar(QObject):
         QObject.__init__(self)
         super(CyAvatar, self).__init__()
         self.buddy = cybuddy
+        self.t_cookie = CyEmussa.Instance().t_cookie
+        self.y_cookie = CyEmussa.Instance().y_cookie
         self.image = QPixmap("ui/resources/no-avatar.png")
         self.sizes = {}
 
@@ -90,8 +92,9 @@ class CyAvatar(QObject):
     def get_from_yahoo(self):
         self.manager = QNetworkAccessManager()
         self.manager.finished.connect(self.set_from_yahoo)
-        self.req = QNetworkRequest(QUrl("http://img.msg.yahoo.com/avatar.php?yids={0}".format(self.buddy.yahoo_id)))
+        self.req = QNetworkRequest(QUrl("http://rest-img.msg.yahoo.com/v1/displayImage/yahoo/{0}".format(self.buddy.yahoo_id)))
         self.req.setRawHeader('User-agent', 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US)')
+        self.req.setRawHeader('Cookie', 'Y={0}; T={1}'.format(self.y_cookie, self.t_cookie))
         self.reply = self.manager.get(self.req)
 
     def set_from_yahoo(self, reply):
