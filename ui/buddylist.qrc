@@ -38,6 +38,7 @@
     <file>resources/camera-web.png</file>
   </qresource>
   <qresource prefix="misc">
+    <file>arrow-left.png</file>
     <file>resources/folder.png</file>
     <file>resources/yahoo-finance-quotes.png</file>
   </qresource>

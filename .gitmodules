@@ -1,0 +1,3 @@
+[submodule "libemussa"]
+	path = libemussa
+	url = git@github.com:ov1d1u/libemussa.git

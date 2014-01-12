@@ -10,7 +10,7 @@ from libemussa.const import *
 from add_buddy import AddBuddyWizard
 from auth_response_dialog import AuthResponseDialog
 from auth_request_dialog import AuthRequestDialog
-import buddylist_rc, insider, chatwindow
+import buddylist_rc, insider, chatwindow, avatar_menu
 
 ym = cyemussa.CyEmussa.Instance()
 settings = settingsManager.Settings.Instance()
@@ -310,6 +310,7 @@ class BuddyList(QWidget, QObject):
         self.known_buddies = []  # all known buddies, not just the ones in our buddylist
         self.chat_windows = []
         self.last_group_received = None
+        self.avatar_arrow = None
 
         ym.register_callback(cb.EMUSSA_CALLBACK_BUDDYLIST_RECEIVED, self._buddylist_received)
         ym.register_callback(cb.EMUSSA_CALLBACK_ADDRESSBOOK_RECEIVED, self.addressbook_recv)
@@ -334,6 +335,10 @@ class BuddyList(QWidget, QObject):
         self.widget.buddyTree.itemSelectionChanged.connect(self._btree_selection_changed)
         self.widget.searchField.textChanged.connect(self._filter_contacts)
         self.widget.addBuddyButton.clicked.connect(self._add_buddy)
+        self.widget.avatarButton.clicked.connect(self._showAvatarMenu)
+
+        self.widget.avatarButton.enterEvent = self._avatarButtonEnter
+        self.widget.avatarButton.leaveEvent = self._avatarButtonLeave
 
         self.widget.customStatusCombo.lineEdit().setPlaceholderText("Have something to share?")
         self.widget.customStatusCombo.addItems(settings.statuses)
@@ -440,6 +445,32 @@ class BuddyList(QWidget, QObject):
 
         self.widget.fakeStatusCombo.setMenu(menu)
         self.widget.fakeStatusCombo.setText('{0}'.format(self.app.me.nickname))
+
+    def _avatarButtonEnter(self, event):
+        if not self.avatar_arrow:
+            self.avatar_arrow = QLabel()
+            self.avatar_arrow.setPixmap(QPixmap(":misc/arrow-left.png"))
+            self.avatar_arrow.resize(16, 16)
+            self.avatar_arrow.move(
+                0,
+                self.widget.avatarButton.height() - self.avatar_arrow.pixmap().height()
+            )
+            self.avatar_arrow.setParent(self.widget.avatarButton)
+        self.avatar_arrow.show()
+
+    def _avatarButtonLeave(self, event):
+        if self.avatar_arrow:
+            self.avatar_arrow.hide()
+
+    def _showAvatarMenu(self):
+        self.avatarMenu = avatar_menu.AvatarMenu(self.app)
+        avatarButtonPos = self.widget.avatarButton.mapToGlobal(self.widget.avatarButton.pos())
+        x = avatarButtonPos.x() - self.avatarMenu.widget.width()
+        y = avatarButtonPos.y()
+        if x < 0:
+            x = self.widget.mapToGlobal(self.widget.pos()).x() + self.widget.width()
+        self.avatarMenu.widget.move(x, y)
+        self.avatarMenu.widget.show()
 
     def _buddylist_context_menu(self, event):
         item = self.widget.buddyTree.currentItem()
