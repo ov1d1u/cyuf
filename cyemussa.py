@@ -2,6 +2,7 @@
 # Qt wrapper around libEmussa classes
 #
 import traceback
+import io
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkRequest
@@ -60,20 +61,15 @@ class CyStatus(im.Status, QObject):
         self.update.emit()
 
 
-class CyAvatar(QObject):
+class CyAvatar(im.DisplayImage, QObject):
     update = pyqtSignal()
 
-    def __init__(self, cybuddy=None):
+    def __init__(self, avatar=None):
         QObject.__init__(self)
         super(CyAvatar, self).__init__()
-        self.buddy = cybuddy
-        self.t_cookie = CyEmussa.Instance().t_cookie
-        self.y_cookie = CyEmussa.Instance().y_cookie
-        self.image = QPixmap("ui/resources/no-avatar.png")
+        if avatar:
+            self.__dict__.update(avatar.__dict__)
         self.sizes = {}
-
-        if self.buddy:
-            self.get_from_yahoo()
 
     def scaled(self, px, pixmap=None):
         image = self.image
@@ -85,28 +81,25 @@ class CyAvatar(QObject):
         self.sizes[px] = scaled
         return scaled
 
-    def set_from_pixmap(self, pixmap):
-        self.image = self.scaled(96, pixmap)
-        self.update.emit()
-
-    def get_from_yahoo(self):
-        self.manager = QNetworkAccessManager()
-        self.manager.finished.connect(self.set_from_yahoo)
-        self.req = QNetworkRequest(QUrl("http://rest-img.msg.yahoo.com/v1/displayImage/yahoo/{0}".format(self.buddy.yahoo_id)))
-        self.req.setRawHeader('User-agent', 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US)')
-        self.req.setRawHeader('Cookie', 'Y={0}; T={1}'.format(self.y_cookie, self.t_cookie))
-        self.reply = self.manager.get(self.req)
-
-    def set_from_yahoo(self, reply):
-        imgdata = reply.readAll()
-        pixmap = QPixmap()
-        pixmap.loadFromData(imgdata)
-        if not pixmap.isNull():
-            self.sizes = {}
-            self.image = pixmap
-            self.update.emit()
+    @property
+    def image(self):
+        if self.image_data:
+            pixmap = QPixmap()
+            pixmap.loadFromData(self.image_data)
         else:
-            self.update.emit()
+            pixmap = QPixmap("ui/resources/no-avatar.png")
+        return pixmap
+
+    @image.setter
+    def image(self, pixmap):
+        byte_array = QByteArray()
+        buff = QBuffer(byte_array)
+        buff.open(QIODevice.WriteOnly)
+        pixmap.save(buff, 'PNG')
+        string_io = io.BytesIO(byte_array)
+        string_io.seek(0)
+        self.image_data = string_io.read()
+        self.update.emit()
 
 
 class CyContact(im.Contact, QObject):
@@ -142,7 +135,7 @@ class CyBuddy(im.Buddy, QObject):
             self.status = CyStatus(None, self)
             self.display_name = ''
 
-        self.avatar = CyAvatar(self)
+        self.avatar = CyAvatar()
         self.contact = CyContact(self)
         self.group = ''
 
@@ -152,11 +145,17 @@ class CyBuddy(im.Buddy, QObject):
     def __setattr__(self, name, value):
         if name == 'status' and value.__class__ == im.Status:
             value = CyStatus(value)
+            value.update.connect(self._emit_update(value))
         if name == 'contact':
             if value.nickname:
                 self.display_name = '{0}'.format(value.nickname)
             elif value.fname:
                 self.display_name = '{0} {1}'.format(value.fname, value.lname)
+        if name == 'avatar':
+            if value.__class__ == im.DisplayImage:
+                value = CyAvatar(value)
+            value.update.connect(self._emit_update(value))
+
         super(CyBuddy, self).__setattr__(name, value)
 
         if name == 'status':

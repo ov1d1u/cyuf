@@ -64,3 +64,20 @@ def grayscale_pixmap(pixmap):
             image.setPixel(i, j, qRgb(gray, gray, gray))
     pixmap = pixmap.fromImage(image)
     return pixmap
+
+def scalePixmapAspectFill(pixmap, size):
+    from PyQt4.QtCore import Qt
+    from PyQt4.QtGui import QPixmap
+    scaled_pixmap = pixmap.scaled(size,
+                                  Qt.KeepAspectRatioByExpanding,
+                                  Qt.SmoothTransformation)
+    x_offset = 0
+    y_offset = 0
+
+    if scaled_pixmap.size().width() > size.width():
+        x_offset = scaled_pixmap.size().width() - size.width()
+    elif scaled_pixmap.size().height() > size.height():
+        y_offset = scaled_pixmap.size().height() - size.height()
+    
+    image_copy = scaled_pixmap.toImage().copy(x_offset, y_offset, size.width(), size.height())
+    return QPixmap.fromImage(image_copy)

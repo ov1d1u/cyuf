@@ -89,7 +89,6 @@ class LoginWindow(QObject):
         buddy.nickname = personal_info.yahoo_id
         buddy.contact.fname = personal_info.name
         buddy.contact.lname = personal_info.surname
-        buddy.avatar.get_from_yahoo()
 
         if emussa.is_invisible:
             buddy.status.code = const.YAHOO_STATUS_INVISIBLE

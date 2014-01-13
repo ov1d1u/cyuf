@@ -10,6 +10,11 @@ from libemussa import callbacks as cb
 settings = settingsManager.Settings.Instance()
 ym = cyemussa.CyEmussa.Instance()
 
+QCoreApplication.setApplicationName("Cyuf Messenger")
+QCoreApplication.setOrganizationName("Ovidiu Nitan")
+QCoreApplication.setApplicationVersion("0.1 alpha")
+QDir().mkpath(QDesktopServices.storageLocation(QDesktopServices.DataLocation))
+
 
 class Cyuf(QObject):
     buddylist = None

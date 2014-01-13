@@ -323,6 +323,7 @@ class BuddyList(QWidget, QObject):
         ym.register_callback(cb.EMUSSA_CALLBACK_AUTH_REJECTED, self.add_request_rejected)
         ym.register_callback(cb.EMUSSA_CALLBACK_REMOVEBUDDY, self._remove_buddy_remote)
         ym.register_callback(cb.EMUSSA_CALLBACK_MOVEBUDDY, self._move_buddy_remote)
+        ym.register_callback(cb.EMUSSA_CALLBACK_AVATAR_UPDATED, self._avatar_updated)
         self.app.me.update_status.connect(self._update_myself)
         self.app.me.update_avatar.connect(self._update_myself)
         self.widget.insiderButton.clicked.connect(self.show_insider)
@@ -752,6 +753,11 @@ class BuddyList(QWidget, QObject):
             self.widget.fakeStatusCombo.setIcon(icon)
         self.widget.avatarButton.setIcon(QIcon(self.app.me.avatar.image))
 
+        # update ourself entry from the buddylist, if it exists
+        cybuddy = self._get_buddy(self.app.me.yahoo_id)
+        if cybuddy:
+            cybuddy.avatar.image = QIcon(self.app.me.avatar.image).pixmap(QSize(96, 96))
+
     def _get_buddy(self, yahoo_id):
         for cybuddy in self.known_buddies:
             if yahoo_id == cybuddy.yahoo_id:
@@ -821,6 +827,14 @@ class BuddyList(QWidget, QObject):
             ym.move_buddy(who, cgroup, where)
             self.move_buddy(who, where)
 
+    def _avatar_updated(self, emussa, display_image):
+        if display_image.yahoo_id == self.app.me.yahoo_id:
+            self.app.me.avatar = display_image
+            self.widget.avatarButton.setIcon(QIcon(self.app.me.avatar.image))
+        buddy = self._get_buddy(display_image.yahoo_id)
+        if buddy:
+            buddy.avatar = display_image
+
     def show_insider(self):
         self.i = insider.Insider(
             {'T': ym.t_cookie,
@@ -867,6 +881,7 @@ class BuddyList(QWidget, QObject):
         self.widget.buddyTree.setItemWidget(item, 0, item.widget)
         self.buddy_items[buddy.yahoo_id] = item
         self.known_buddies.append(cybuddy)
+        ym.get_display_image(cybuddy.yahoo_id)
         return item
 
     def received_message(self, emussa, personal_msg):
@@ -953,3 +968,4 @@ class BuddyList(QWidget, QObject):
         ym.unregister_callback(cb.EMUSSA_CALLBACK_AUTH_REJECTED, self.add_request_rejected)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_REMOVEBUDDY, self._remove_buddy_remote)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_MOVEBUDDY, self._move_buddy_remote)
+        ym.unregister_callback(cb.EMUSSA_CALLBACK_AVATAR_UPDATED, self._avatar_updated)
