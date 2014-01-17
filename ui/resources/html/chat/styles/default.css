@@ -4,6 +4,10 @@ body {
   margin: 0px 0px 5px 0px;
 }
 
+a:link {
+  color: #0066cc;
+}
+
 img {
   vertical-align: middle;
 }
@@ -74,4 +78,22 @@ img {
   margin-left: 5px;
   color: #333399;
   font-style:italic;
+}
+
+.file_in {
+  background-color: #fbfaf3;
+  border-bottom: 1px solid #dfdcc4;
+  margin-top: 2px;
+  margin-bottom: 2px;
+  padding-left: 5px;
+  padding-bottom: 5px;
+}
+
+.file_in_text {
+  color: #7e7e7e;
+  margin-left: 40px;
+}
+
+.file_in_icon {
+  float: left;
 }

@@ -2,7 +2,6 @@ from PyQt4 import uic
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
-import io
 import util
 import cyemussa
 import avatar_chooser
@@ -45,13 +44,7 @@ class AvatarPrechooser(QObject):
             self.app.me.avatar.image = self.widget.label_avatar.pixmap()
 
             # encode the pixmap to PNG and upload it
-            byte_array = QByteArray()
-            buff = QBuffer(byte_array)
-            buff.open(QIODevice.WriteOnly)
-            self.widget.label_avatar.pixmap().save(buff, 'PNG')
-            string_io = io.BytesIO(byte_array)
-            string_io.seek(0)
-            image_data = string_io.read()
+            image_data = util.pixmap_to_png(self.widget.label_avatar.pixmap())
             ym.upload_display_image(image_data)
         else:
             self.app.me.avatar.image = QPixmap("ui/resources/no-avatar.png")

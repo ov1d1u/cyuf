@@ -324,6 +324,12 @@ class BuddyList(QWidget, QObject):
         ym.register_callback(cb.EMUSSA_CALLBACK_REMOVEBUDDY, self._remove_buddy_remote)
         ym.register_callback(cb.EMUSSA_CALLBACK_MOVEBUDDY, self._move_buddy_remote)
         ym.register_callback(cb.EMUSSA_CALLBACK_AVATAR_UPDATED, self._avatar_updated)
+        ym.register_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_REQUEST, self.file_incoming)
+        ym.register_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_CANCELLED, self.cancel_file_transfer)
+        ym.register_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_ACCEPT, self.file_transfer_accepted)
+        ym.register_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_UPLOAD, self.file_transfer_upload)
+        ym.register_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_INFO, self.file_incoming_info)
+        ym.register_callback(cb.EMUSSA_CALLBACK_DISCONNECTED, self.disconnected)
         self.app.me.update_status.connect(self._update_myself)
         self.app.me.update_avatar.connect(self._update_myself)
         self.widget.insiderButton.clicked.connect(self.show_insider)
@@ -482,7 +488,7 @@ class BuddyList(QWidget, QObject):
 
         # Instant message...
         def instant_message():
-            self._create_chat_for_buddy(item.cybuddy, True)
+            self._open_chat_for_buddy(item.cybuddy, True)
         pixmap = QPixmap('ui/resources/view-conversation-balloon.png')
         action = QAction(QIcon(pixmap), 'Instant message...', menu)
         action.triggered.connect(instant_message)
@@ -780,7 +786,14 @@ class BuddyList(QWidget, QObject):
             iterator += 1
         return None
 
-    def _create_chat_for_buddy(self, cybuddy, focus_chat=False):
+    def _get_chat_for_buddy(self, cybuddy):
+        for win in self.chat_windows:
+            for chat in win.chatwidgets:
+                if chat.cybuddy.yahoo_id == cybuddy.yahoo_id:
+                    return chat
+        return None
+
+    def _open_chat_for_buddy(self, cybuddy, focus_chat=False):
         for win in self.chat_windows:
             for chat in win.chatwidgets:
                 if chat.cybuddy.yahoo_id == cybuddy.yahoo_id:
@@ -797,6 +810,8 @@ class BuddyList(QWidget, QObject):
         else:
             win = self.chat_windows[0]
             win.new_chat(cybuddy)
+            if focus_chat:
+                win.focus_chat(cybuddy)
         return win.chatwidgets[-1:][0]
 
     def _chatwindow_closed(self, window):
@@ -891,8 +906,61 @@ class BuddyList(QWidget, QObject):
         else:
             # we sent this message, but from another device
             cybuddy = self._get_buddy(personal_msg.receiver)
-        chat = self._create_chat_for_buddy(cybuddy)
+        chat = self._open_chat_for_buddy(cybuddy)
         chat.receive_message(message)
+
+    def file_incoming(self, emussa, ft):
+        file_transfer = cyemussa.CyFileTransfer(ft)
+        if file_transfer.sender:
+            cybuddy = self._get_buddy(file_transfer.sender)
+        else:
+            # we sent this file, but from another device
+            cybuddy = self._get_buddy(file_transfer.receiver)
+        chat = self._open_chat_for_buddy(cybuddy)
+        chat.receive_file_transfer(file_transfer)
+
+    def file_incoming_info(self, emussa, ftinfo):
+        file_transfer_info = cyemussa.CyFileTransferInfo(ftinfo)
+        if file_transfer_info.sender:
+            cybuddy = self._get_buddy(file_transfer_info.sender)
+        else:
+            # we sent this file, but from another device
+            cybuddy = self._get_buddy(file_transfer_info.receiver)
+        chat = self._open_chat_for_buddy(cybuddy)
+        chat.receive_file_info(file_transfer_info)
+
+    def cancel_file_transfer(self, emussa, ft):
+        file_transfer = cyemussa.CyFileTransfer(ft)
+        if file_transfer.sender:
+            cybuddy = self._get_buddy(file_transfer.sender)
+        else:
+            # we sent this file, but from another device
+            cybuddy = self._get_buddy(file_transfer.receiver)
+        chat = self._get_chat_for_buddy(cybuddy)
+        if chat:
+            chat.transfer_cancelled(file_transfer)
+
+    def file_transfer_accepted(self, emussa, ft):
+        file_transfer = cyemussa.CyFileTransfer(ft)
+        if file_transfer.sender:
+            cybuddy = self._get_buddy(file_transfer.sender)
+        else:
+            # we sent this file, but from another device
+            cybuddy = self._get_buddy(file_transfer.receiver)
+        chat = self._get_chat_for_buddy(cybuddy)
+        if chat:
+            chat.transfer_accepted(file_transfer)
+
+    def file_transfer_upload(self, emussa, ftinfo):
+        file_transfer_info = cyemussa.CyFileTransferInfo(ftinfo)
+        if file_transfer_info.sender:
+            cybuddy = self._get_buddy(file_transfer_info.sender)
+        else:
+            # we sent this file, but from another device
+            cybuddy = self._get_buddy(file_transfer_info.receiver)
+        chat = self._get_chat_for_buddy(cybuddy)
+        if chat:
+            chat.transfer_upload(file_transfer_info)
 
     def received_audible(self, emussa, audible):
         if audible.sender:
@@ -900,7 +968,7 @@ class BuddyList(QWidget, QObject):
         else:
             # we sent this message, but from another device
             cybuddy = self._get_buddy(audible.receiver)
-        chat = self._create_chat_for_buddy(cybuddy)
+        chat = self._open_chat_for_buddy(cybuddy)
         chat.receive_audible(audible)
 
     def add_request(self, emussa, auth):
@@ -925,7 +993,7 @@ class BuddyList(QWidget, QObject):
         self.authresponse = AuthResponseDialog(self.app, auth)
 
     def btree_open_chat(self, buddy_item):
-        self._create_chat_for_buddy(buddy_item.cybuddy, True)
+        self._open_chat_for_buddy(buddy_item.cybuddy, True)
 
     def remove_from_btree(self, yahoo_id):
         item = self._get_item_for_buddy(yahoo_id)
@@ -955,6 +1023,11 @@ class BuddyList(QWidget, QObject):
     def sign_out(self):
         ym.signout()
 
+    def disconnected(self, emussa):
+        errormsg = QErrorMessage(self.widget)
+        errormsg.showMessage("Disconnected")
+        errormsg.exec()
+
     def close(self, emussa=None):
         ym.unregister_callback(cb.EMUSSA_CALLBACK_BUDDYLIST_RECEIVED, self._buddylist_received)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_ADDRESSBOOK_RECEIVED, self.addressbook_recv)
@@ -969,3 +1042,9 @@ class BuddyList(QWidget, QObject):
         ym.unregister_callback(cb.EMUSSA_CALLBACK_REMOVEBUDDY, self._remove_buddy_remote)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_MOVEBUDDY, self._move_buddy_remote)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_AVATAR_UPDATED, self._avatar_updated)
+        ym.unregister_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_REQUEST, self.file_incoming)
+        ym.unregister_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_CANCELLED, self.cancel_file_transfer)
+        ym.unregister_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_ACCEPT, self.file_transfer_accepted)
+        ym.unregister_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_UPLOAD, self.file_transfer_upload)
+        ym.unregister_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_INFO, self.file_incoming_info)
+        ym.unregister_callback(cb.EMUSSA_CALLBACK_DISCONNECTED, self.disconnected)

@@ -381,7 +381,7 @@
             </widget>
            </item>
            <item>
-            <widget class="QToolButton" name="toolButton_8">
+            <widget class="QToolButton" name="filetransfer_btn">
              <property name="toolTip">
               <string>Send file...</string>
              </property>
@@ -599,7 +599,7 @@ background-color: palette(Base);
   <tabstop>toolButton_5</tabstop>
   <tabstop>toolButton_6</tabstop>
   <tabstop>toolButton_7</tabstop>
-  <tabstop>toolButton_8</tabstop>
+  <tabstop>filetransfer_btn</tabstop>
   <tabstop>toolButton_9</tabstop>
   <tabstop>toolButton_10</tabstop>
   <tabstop>toolButton</tabstop>

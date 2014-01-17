@@ -2,7 +2,7 @@
 # Qt wrapper around libEmussa classes
 #
 import traceback
-import io
+import util
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkRequest
@@ -92,13 +92,7 @@ class CyAvatar(im.DisplayImage, QObject):
 
     @image.setter
     def image(self, pixmap):
-        byte_array = QByteArray()
-        buff = QBuffer(byte_array)
-        buff.open(QIODevice.WriteOnly)
-        pixmap.save(buff, 'PNG')
-        string_io = io.BytesIO(byte_array)
-        string_io.seek(0)
-        self.image_data = string_io.read()
+        self.image_data = util.pixmap_to_png(pixmap)
         self.update.emit()
 
 
@@ -189,3 +183,36 @@ class CyPersonalMessage(im.PersonalMessage, QObject):
 
     def __setattr__(self, name, value):
         super(CyPersonalMessage, self).__setattr__(name, value)
+
+
+class CyFile(im.File, QObject):
+    def __init__(self, file=None):
+        QObject.__init__(self)
+        super(CyFile, self).__init__()
+        if file:
+            self.__dict__.update(file.__dict__)
+
+    def __setattr__(self, name, value):
+        super(CyFile, self).__setattr__(name, value)
+
+
+class CyFileTransfer(im.FileTransfer, QObject):
+    def __init__(self, file_transfer=None):
+        QObject.__init__(self)
+        super(CyFileTransfer, self).__init__()
+        if file_transfer:
+            self.__dict__.update(file_transfer.__dict__)
+
+    def __setattr__(self, name, value):
+        super(CyFileTransfer, self).__setattr__(name, value)
+
+
+class CyFileTransferInfo(im.FileTransferInfo, QObject):
+    def __init__(self, file_transfer_info=None):
+        QObject.__init__(self)
+        super(CyFileTransferInfo, self).__init__()
+        if file_transfer_info:
+            self.__dict__.update(file_transfer_info.__dict__)
+
+    def __setattr__(self, name, value):
+        super(CyFileTransferInfo, self).__setattr__(name, value)

@@ -2,21 +2,6 @@ from functools import wraps
 from time import time
 
 
-def pixmap_to_base64(pixmap):
-    import io as BytesIO
-    import base64
-    from PyQt4.QtCore import QBuffer, QByteArray, QIODevice
-
-    byte_array = QByteArray()
-    buffer = QBuffer(byte_array)
-    buffer.open(QIODevice.WriteOnly)
-    pixmap.save(buffer, 'PNG')
-    string_io = BytesIO.BytesIO(byte_array)
-    string_io.seek(0)
-
-    return base64.b64encode(string_io.read()).decode()
-
-
 def sanitize_html(value):
     VALID_TAGS = ['b', 'i', 'u', 's', 'ding', 'br', 'font']
     from bs4 import BeautifulSoup
@@ -81,3 +66,36 @@ def scalePixmapAspectFill(pixmap, size):
     
     image_copy = scaled_pixmap.toImage().copy(x_offset, y_offset, size.width(), size.height())
     return QPixmap.fromImage(image_copy)
+
+
+def pixmap_to_png(pixmap):
+    import io
+    from PyQt4.QtCore import QBuffer, QByteArray, QIODevice
+
+    byte_array = QByteArray()
+    buffer = QBuffer(byte_array)
+    buffer.open(QIODevice.WriteOnly)
+    pixmap.save(buffer, 'PNG')
+    string_io = io.BytesIO(byte_array)
+    string_io.seek(0)
+    return string_io.read()
+
+def pixmap_to_base64(pixmap):
+    import base64
+    return base64.b64encode(pixmap_to_png(pixmap)).decode()
+
+def random_string(length):
+    import random, string
+    return ''.join(random.choice(string.ascii_lowercase) for _ in range(length))
+
+def string_to_md5(string):
+    import hashlib
+    if type(string) == str:
+        string = string.encode()
+    return hashlib.md5(string).hexdigest()
+
+def string_to_base64(string):
+    import base64
+    if type(string) == str:
+        string = string.encode()
+    return base64.b64encode(string).decode()
