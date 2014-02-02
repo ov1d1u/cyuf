@@ -19,6 +19,9 @@ class ChatWindow(QObject):
         self.widget.setAttribute(Qt.WA_DeleteOnClose, True)
         self.widget.tabWidget.tabCloseRequested.connect(self.close_tab)
         self.widget.tabWidget.currentChanged.connect(self.change_tab)
+        self.widget.viewWebcamMenu.triggered.connect(self.view_webcam)
+
+        self.current_buddy = cybuddy
         self.new_chat(cybuddy)
 
     def _setup_tab(self, chat):
@@ -59,11 +62,15 @@ class ChatWindow(QObject):
         cybuddy.update_all.connect(self._update_tab)
         self._setup_tab(chat)
 
+    def get_current_chat(self):
+        return self.chatwidgets[self.widget.tabWidget.currentIndex()]
+
     def change_tab(self, index):
         if index < len(self.chatwidgets):
             selected = self.chatwidgets[index]
             self.widget.setWindowTitle('{0} - Cyuf'.format(selected.cybuddy.display_name))
             self.widget.setWindowIcon(QIcon(selected.cybuddy.avatar.image))
+            self.current_buddy = selected.cybuddy
 
     def close_tab(self, index):
         chat = None
@@ -87,3 +94,6 @@ class ChatWindow(QObject):
         for chat in self.chatwidgets:
             if chat.cybuddy.yahoo_id == cybuddy.yahoo_id:
                 self.widget.tabWidget.setCurrentIndex(self.chatwidgets.index(chat))
+
+    def view_webcam(self):
+        self.get_current_chat().view_webcam()

@@ -68,21 +68,21 @@ def scalePixmapAspectFill(pixmap, size):
     return QPixmap.fromImage(image_copy)
 
 
-def pixmap_to_png(pixmap):
+def pixmap_to_imgformat(pixmap, format):
     import io
     from PyQt4.QtCore import QBuffer, QByteArray, QIODevice
 
     byte_array = QByteArray()
     buffer = QBuffer(byte_array)
     buffer.open(QIODevice.WriteOnly)
-    pixmap.save(buffer, 'PNG')
+    pixmap.save(buffer, format)
     string_io = io.BytesIO(byte_array)
     string_io.seek(0)
     return string_io.read()
 
-def pixmap_to_base64(pixmap):
+def pixmap_to_base64(pixmap, format='PNG'):
     import base64
-    return base64.b64encode(pixmap_to_png(pixmap)).decode()
+    return base64.b64encode(pixmap_to_imgformat(pixmap, format)).decode()
 
 def random_string(length):
     import random, string

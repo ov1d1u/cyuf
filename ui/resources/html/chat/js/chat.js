@@ -1,5 +1,16 @@
 var hide_timestamp = true;
 
+String.prototype.endsWith = function(pattern) {
+    var d = this.length - pattern.length;
+    return d >= 0 && this.lastIndexOf(pattern) === d;
+};
+
+function baseName(str)
+{
+   var base = new String(str).substring(str.lastIndexOf('/') + 1); 
+   return base;
+}
+
 function _append(element) {
   if ($('#typing').length) {
     $(element).insertBefore($('#typing'))
@@ -166,10 +177,33 @@ function file_in(sender, files, sizes, transfer_id, icon) {
     imagediv.html('<img src="data:image/png;base64,' + icon + '"></img>')
     div.append(imagediv)
     
+    var is_images = true;
+    var file_types;
+    
+    for (filename in files) {
+	if (!files[filename].endsWith('.jpg') || !files[filename].endsWith('.jpeg') ||
+	  !files[filename].endsWith('.gif') || !files[filename].endsWith('.png'))
+	  is_images = false;
+    }
+    
+    if (is_images) {
+      if (files.length == 1) {
+	file_types = 'photo';
+      } else {
+	file_types = 'photos';
+      }
+    } else {
+      if (files.length == 1) {
+	file_types = 'file';
+      } else {
+	file_types = 'files';
+      }
+    }
+    
     var textdiv = $('<div></div>')
     textdiv.attr('class', 'file_in_text')
-    textdiv.html('<p style="color: #77714a; line-height:30%;"><b>' +
-	     sender + ' is sending you ' + files.length + ' file(s):</b></p>')
+    textdiv.html('<span style="color: #77714a;"><b>' +
+	     sender + ' is sending you ' + files.length + ' ' + file_types + ':</b></span> ')
     
     for (x = 0; x < files.length; x++) {
 	textdiv.html(textdiv.html() + files[x] + ' (' + _bytesToSize(sizes[x]) + ')' + '<br/>')
@@ -211,8 +245,23 @@ function file_cancel(sender, transfer_id) {
 }
 
 function file_decline(sender, transfer_id) {
+    transfer_id = transfer_id.replace(/=/g, '\\=')
     $('#' + transfer_id).attr('class', 'infobox')
-    $('#' + transfer_id + ' .file_in_text').html('<b>You have declined the file sent by ' + sender + '</b>')
+    $('#' + transfer_id + ' .file_in_text').html('<b>You have declined the file(s) sent by ' + sender + '</b>')
+    $('#' + transfer_id).append($('<div></div>').css('clear', 'both'))
+}
+
+function file_rejected(sender, transfer_id) {
+    transfer_id = transfer_id.replace(/=/g, '\\=')
+    $('#' + transfer_id).attr('class', 'infobox')
+    $('#' + transfer_id + ' .file_in_text').html('<b>' + sender + ' has declined your file transfer.</b>')
+    $('#' + transfer_id).append($('<div></div>').css('clear', 'both'))
+}
+
+function cancel_send(sender, transfer_id) {
+    transfer_id = transfer_id.replace(/=/g, '\\=')
+    $('#' + transfer_id).attr('class', 'infobox')
+    $('#' + transfer_id + ' .file_in_text').html('<b>You have canceled the file transfer.</b>')
     $('#' + transfer_id).append($('<div></div>').css('clear', 'both'))
 }
 
@@ -238,6 +287,64 @@ function file_progress(transfer_id, filename, progress) {
       <b><a href="cyuf://cancel/' + transfer_id + '">Cancel</a></b> (Alt+Shift+C)</p>\
       <div styke="clear: both;"></div>'
     )
+}
+
+function transfer_finished(transfer_id, sender, count, action, path) {
+    transfer_id = transfer_id.replace(/=/g, '\\=')
+    
+    if (action == 'open-dir') {
+        $('#' + transfer_id).attr('class', 'infobox')
+        $('#' + transfer_id + ' .file_in_text').html(
+            '<b>You have received ' + count + ' files from ' + sender + '.</b><br/>' +
+            '<b><a href="cyuf://open-dir/' + path + '">Reveal files</a></b>'
+            )
+        $('#' + transfer_id).append($('<div></div>').css('clear', 'both'))
+    } else if (action == 'open-file') {
+        var is_photo = false;
+        
+        if (path.endsWith('.jpg') || path.endsWith('.jpeg') ||
+          path.endsWith('.gif') || path.endsWith('.png')) {
+            is_photo = true;
+          }
+        
+        $('#' + transfer_id).attr('class', 'infobox')
+        if (is_photo) {
+            $('#' + transfer_id + ' .file_in_text').html(
+            '<span class="file_status_text">You have received ' + count + ' photo from ' + sender + '.</span><br/>' +
+            '<span class="standard_text_color">' + baseName(path) + '</span><br/>' +
+            '<b><a href="cyuf://open-file/' + path + '">Open photo</a></b>'
+            )
+        } else {
+            $('#' + transfer_id + ' .file_in_text').html(
+            '<span class="file_status_text">You have received ' + count + ' file from ' + sender + '.</span><br/>' +
+            '<span class="standard_text_color">' + baseName(path) + '</span><br/>' +
+            '<b><a href="cyuf://open-file/' + path + '">Open file</a></b>'
+            )
+        }
+        $('#' + transfer_id).append($('<div></div>').css('clear', 'both'))
+    } else if (action == 'file-sent') {
+        var is_photo = false;
+        
+        if (path.endsWith('.jpg') || path.endsWith('.jpeg') ||
+          path.endsWith('.gif') || path.endsWith('.png')) {
+            is_photo = true;
+          }
+        
+        $('#' + transfer_id).attr('class', 'infobox')
+        if (is_photo) {
+            $('#' + transfer_id + ' .file_in_text').html(
+            '<span class="file_status_text">You sent ' + count + ' photo to ' + sender + '.</span><br/>' +
+            '<span class="standard_text_color">' + baseName(path) + '</span><br/>' +
+            '<b><a href="cyuf://open-file/' + path + '">Open photo</a></b>'
+            )
+        } else {
+            $('#' + transfer_id + ' .file_in_text').html(
+            '<span class="file_status_text">You have received ' + count + ' file from ' + sender + '.</span><br/>' +
+            '<span class="standard_text_color">' + baseName(path) + '</span><br/>' +
+            '<b><a href="cyuf://open-file/' + path + '">Open file</a></b>'
+            )
+        }
+    }
 }
 
 function file_out(receiver, files, sizes, transfer_id, icon) {
@@ -284,17 +391,17 @@ function file_out(receiver, files, sizes, transfer_id, icon) {
 }
 
 function start_typing(who) {
-  if ($('#typing').length) {
-    $('#typing').remove();
-  }
-  var div = $('<div></div>')
-  div.attr('class', 'typing')
-  div.attr('id', 'typing')
-  div.html(who + ' is typing...')
-  
-  _append(div)
+    if ($('#typing').length) {
+        $('#typing').remove();
+    }
+    var div = $('<div></div>')
+    div.attr('class', 'typing')
+    div.attr('id', 'typing')
+    div.html(who + ' is typing...')
+
+    _append(div)
 }
 
 function stop_typing() {
-  $('#typing').html('&nbsp;')
+    $('#typing').html('&nbsp;')
 }

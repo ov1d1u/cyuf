@@ -92,7 +92,7 @@ class CyAvatar(im.DisplayImage, QObject):
 
     @image.setter
     def image(self, pixmap):
-        self.image_data = util.pixmap_to_png(pixmap)
+        self.image_data = util.pixmap_to_imgformat(pixmap, 'PNG')
         self.update.emit()
 
 

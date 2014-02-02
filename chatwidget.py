@@ -10,6 +10,7 @@ import util
 from libemussa.const import *
 from libemussa import callbacks as cb
 from emotes import emotes
+from webcam_viewer import WebcamViewer
 import cyemussa, util, datetime, re
 from add_buddy import AddBuddyWizard
 from file_downloader import FileDownloader, FileUploader
@@ -22,6 +23,7 @@ class FileTransferTask:
         self.transfer_info = None
         self.destination = ''
         self.files = []
+        self.paths = [] # for remembering where we saved the downloaded files
 
     def remove_file(self, filename):
         for f in self.files:
@@ -42,6 +44,7 @@ class ChatWidget(QWidget):
         self.queue = []
         self.accepted_fts = []  # accepted file transfers
         self.transfer_tasks = {}
+        self.webcam_viewer = None
 
         defaultSettings = QWebSettings.globalSettings()
         defaultSettings.setAttribute(QWebSettings.JavascriptEnabled, True)
@@ -133,6 +136,16 @@ class ChatWidget(QWidget):
                                  self.cybuddy.yahoo_id,
                                  transfer_id)
                 ym.decline_transfer(self.cybuddy.yahoo_id, transfer_id)
+
+            if url.host() == 'cancel-send':
+                self._javascript('cancel_send',
+                                 self.cybuddy.yahoo_id,
+                                 transfer_id)
+                ym.cancel_transfer(self.cybuddy.yahoo_id, transfer_id)
+
+            if url.host() == 'open-file' or url.host() == 'open-dir':
+                QDesktopServices.openUrl(QUrl(url.path()))
+
 
     def _get_link_from_status(self):
         sep = ''
@@ -271,9 +284,15 @@ class ChatWidget(QWidget):
             sizes.append(f.filesize)
 
         self.transfer_tasks[transfer_task.transfer_info.transfer_id] = transfer_task
+        thumbnail = None
 
-        icon = QFileIconProvider().icon(QFileInfo(files[0]))
-        icon_base64 = util.pixmap_to_base64(icon.pixmap(QSize(32, 32)))
+        if len(files) == 1 and QImageReader.imageFormat(files[0]):
+            icon = util.scalePixmapAspectFill(QPixmap(files[0]), QSize(32, 32))
+            icon_base64 = util.pixmap_to_base64(icon, 'JPG')
+            thumbnail = icon_base64
+        else:
+            icon = QFileIconProvider().icon(QFileInfo(files[0]))
+            icon_base64 = util.pixmap_to_base64(icon.pixmap(QSize(32, 32)))
 
         self._javascript(
             'file_out',
@@ -287,7 +306,8 @@ class ChatWidget(QWidget):
         ym.send_files(
             self.cybuddy.yahoo_id,
             transfer_task.transfer_info.transfer_id,
-            files
+            files,
+            thumbnail
         )
 
     def _text_to_emotes(self, text):
@@ -306,7 +326,7 @@ class ChatWidget(QWidget):
         self._javascript(
             'file_progress',
             transfer_id,
-            filename,
+            QFileInfo(filename).fileName(),
             progress
         )
 
@@ -314,8 +334,23 @@ class ChatWidget(QWidget):
         transfer_task = self.transfer_tasks[transfer_id]
         if len(transfer_task.files):
             ym.accept_transfer_next_file(self.cybuddy.yahoo_id, transfer_id)
+            self._download_progress(transfer_id, transfer_task.files[0], 0.0)
         else:
             del self.transfer_tasks[transfer_id]
+
+        if QFileInfo(transfer_task.destination).isDir():
+            action = 'open-dir'
+        else:
+            action = 'open-file'
+
+        self._javascript(
+            'transfer_finished',
+            transfer_id,
+            transfer_task.transfer_info.sender,
+            len(transfer_task.paths),
+            action,
+            transfer_task.destination
+        )
 
     def timerEvent(self, event):
         ym.send_typing(self.cybuddy.yahoo_id, False)
@@ -361,7 +396,7 @@ class ChatWidget(QWidget):
             transfer_task.files.append(cyemussa.CyFile(f))
             files.append(f.filename)
             sizes.append(f.filesize)
-        
+
         self.transfer_tasks[cyfiletransfer.transfer_id] = transfer_task
 
         if not cyfiletransfer.thumbnail:
@@ -387,11 +422,20 @@ class ChatWidget(QWidget):
                 cyftinfo.relay_id
             )
 
-            # remove the current file from left files list and download it
             transfer_task = self.transfer_tasks[cyftinfo.transfer_id]
-            transfer_task.remove_file(cyftinfo.filename)
+            finfo = QFileInfo(transfer_task.destination)
+            if finfo.isDir():
+                path = '{0}/{1}'.format(transfer_task.destination, cyftinfo.filename)
+            else:
+                path = '{0}'.format(transfer_task.destination)
 
-            self.downloader = FileDownloader(transfer_task, cyftinfo.filename)
+            # remove the current file from left files list and download it
+            transfer_task.remove_file(cyftinfo.filename)
+            transfer_task.paths.append(path)
+
+            self._download_progress(cyftinfo.transfer_id, cyftinfo.filename, 0.0)
+
+            self.downloader = FileDownloader(transfer_task, path)
             self.downloader.progress.connect(self._download_progress)
             self.downloader.finished.connect(self._download_finished)
             self.downloader.download(cyftinfo.get_download_url())
@@ -411,11 +455,18 @@ class ChatWidget(QWidget):
             QFileInfo(transfer_task.files[0].filename).fileName()
         )
 
+    def transfer_rejected(self, cyfiletransfer):
+        self._javascript(
+            'file_rejected',
+            cyfiletransfer.sender,
+            cyfiletransfer.transfer_id
+        )
+
     def transfer_upload(self, cyftinfo):
         transfer_task = self.transfer_tasks[cyftinfo.transfer_id]
         if not cyftinfo.relay_id:
             # this is an already started multi-file transfer
-            # which now requires the next file
+            # which now requires us to upload the next file
             transfer_task.files.pop(0)
             if len(transfer_task.files):
                 filepath = transfer_task.files[0].filename
@@ -434,7 +485,7 @@ class ChatWidget(QWidget):
                 #     filepath
                 # )
             return
-            
+
         filepath = transfer_task.files[0].filename
         transfer_task.transfer_info.relay_id = cyftinfo.relay_id
         self.uploader = FileUploader(transfer_task)
@@ -444,6 +495,10 @@ class ChatWidget(QWidget):
             transfer_task.transfer_info.get_download_url(),
             filepath
         )
+
+    def view_webcam(self):
+        ym.send_webcam_request(self.cybuddy.yahoo_id)
+        self.webcam_viewer = WebcamViewer(self)
 
     def receive_audible(self, audible):
         self.audible = audible

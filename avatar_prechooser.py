@@ -44,7 +44,7 @@ class AvatarPrechooser(QObject):
             self.app.me.avatar.image = self.widget.label_avatar.pixmap()
 
             # encode the pixmap to PNG and upload it
-            image_data = util.pixmap_to_png(self.widget.label_avatar.pixmap())
+            image_data = util.pixmap_to_imgformat(self.widget.label_avatar.pixmap(), 'PNG')
             ym.upload_display_image(image_data)
         else:
             self.app.me.avatar.image = QPixmap("ui/resources/no-avatar.png")

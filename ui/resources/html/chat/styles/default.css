@@ -12,6 +12,10 @@ img {
   vertical-align: middle;
 }
 
+.standard_text_color {
+    color: #000000;
+}
+
 .infobox {
   background-color: #f0f6fb;
   border-bottom: 1px solid #c1cdd7;
@@ -92,6 +96,11 @@ img {
 .file_in_text {
   color: #7e7e7e;
   margin-left: 40px;
+}
+
+.file_status_text {
+    color: #5b7b96;
+    font-weight: bold;
 }
 
 .file_in_icon {

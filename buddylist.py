@@ -327,6 +327,7 @@ class BuddyList(QWidget, QObject):
         ym.register_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_REQUEST, self.file_incoming)
         ym.register_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_CANCELLED, self.cancel_file_transfer)
         ym.register_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_ACCEPT, self.file_transfer_accepted)
+        ym.register_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_REJECT, self.file_transfer_rejected)
         ym.register_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_UPLOAD, self.file_transfer_upload)
         ym.register_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_INFO, self.file_incoming_info)
         ym.register_callback(cb.EMUSSA_CALLBACK_DISCONNECTED, self.disconnected)
@@ -951,6 +952,17 @@ class BuddyList(QWidget, QObject):
         if chat:
             chat.transfer_accepted(file_transfer)
 
+    def file_transfer_rejected(self, emussa, ft):
+        file_transfer = cyemussa.CyFileTransfer(ft)
+        if file_transfer.sender:
+            cybuddy = self._get_buddy(file_transfer.sender)
+        else:
+            # we sent this file, but from another device
+            cybuddy = self._get_buddy(file_transfer.receiver)
+        chat = self._get_chat_for_buddy(cybuddy)
+        if chat:
+            chat.transfer_rejected(file_transfer)
+
     def file_transfer_upload(self, emussa, ftinfo):
         file_transfer_info = cyemussa.CyFileTransferInfo(ftinfo)
         if file_transfer_info.sender:
@@ -1045,6 +1057,7 @@ class BuddyList(QWidget, QObject):
         ym.unregister_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_REQUEST, self.file_incoming)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_CANCELLED, self.cancel_file_transfer)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_ACCEPT, self.file_transfer_accepted)
+        ym.register_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_REJECT, self.file_transfer_rejected)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_UPLOAD, self.file_transfer_upload)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_INFO, self.file_incoming_info)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_DISCONNECTED, self.disconnected)

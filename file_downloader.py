@@ -80,12 +80,8 @@ class FileDownloader(QObject):
 
         response = requests.get(url, headers=headers, stream=True)
         clength = int(response.headers['content-length'])
-        
-        finfo = QFileInfo(self.transfer_task.destination)
-        if finfo.isDir():
-            fh = QFile('{0}/{1}'.format(self.transfer_task.destination, self.filename))
-        else:
-            fh = QFile('{0}'.format(self.transfer_task.destination))
+
+        fh = QFile(self.filename)
 
         if not fh.open(QIODevice.Append):
             self.error.emit(
