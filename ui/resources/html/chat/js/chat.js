@@ -7,8 +7,12 @@ String.prototype.endsWith = function(pattern) {
 
 function baseName(str)
 {
-   var base = new String(str).substring(str.lastIndexOf('/') + 1); 
+   var base = new String(str).substring(str.lastIndexOf('/') + 1);
    return base;
+}
+
+function jQuerySelectorEscape(expression) {
+      return expression.replace(/[!"$%&'()*+,.\/:;<=>?@\[\\\]^`{|}~]/g, '\\$&');
 }
 
 function _append(element) {
@@ -26,13 +30,13 @@ function _createAudible(div, sender, url, message, timestamp) {
     time.attr('class', 'timestamp')
     if (!hide_timestamp) time.show()
     if (timestamp) time.html(' (' + timestamp + ')')
-    
+
     var sender_id = $('<span></span>')
     sender_id.attr('class', 'yahoo_id')
     sender_id.append('<span class="buddyname">' + sender + '</span>')
     sender_id.append(time)
     sender_id.append(': ')
-    
+
     var swf_object = $('<div style="float:left;" class="audible_container"> \
     <object classid="clsid27cdb6e-ae6d-11cf-96b8-444553540000" id="audible_'+timestamp+'" width=100 height=100 \
     codebase="http://active.macromedia.com/flash2/cabs/swflash.cab#version=2,0,0,11"> \
@@ -40,15 +44,15 @@ function _createAudible(div, sender, url, message, timestamp) {
     <embed name="audible_'+timestamp+'" src="'+url+'" width="64" height="64" \
     pluginspage="http://www.macromedia.com/shockwave/download/index.cgi?p1_prod_version=shockwaveflash"> \
     </object></div>')
-    
+
     div.html(sender_id)
     div.append('<br/>')
     div.append(swf_object)
     div.append('<div class="audible_message">' + message + '</div>')
     _append(div)
-    
+
     var interval;
-    
+
     var autoPlay = function() {
         try {
             clearInterval(interval);
@@ -62,7 +66,7 @@ function _createAudible(div, sender, url, message, timestamp) {
             interval = setInterval(autoPlay, 100);
         }
     }
-    
+
     autoPlay()
 }
 
@@ -112,56 +116,56 @@ function status_updated(text, image, timestamp) {
 function message_in(sender, message, timestamp) {
   var div = $('<div></div>')
   div.attr('class', 'message message_in')
-  
+
   var time = $('<span></span>')
   time.attr('class', 'timestamp')
   if (!hide_timestamp) time.show()
   if (timestamp) time.html(' (' + timestamp + ')')
-  
+
   var sender_id = $('<span></span>')
   sender_id.attr('class', 'yahoo_id')
   sender_id.append('<span class="buddyname">' + sender + '</span>')
   sender_id.append(time)
   sender_id.append(': ')
-  
+
   div.html(sender_id)
   div.append(message)
-  
+
   _append(div)
 }
 
 function message_out(sender, message, timestamp) {
   var div = $('<div></div>')
   div.attr('class', 'message message_out')
-  
+
   var time = $('<span></span>')
   time.attr('class', 'timestamp')
   if (!hide_timestamp) time.show()
   if (timestamp) time.html(' (' + timestamp + ')')
-  
+
   var sender_id = $('<span></span>')
   sender_id.attr('class', 'yahoo_id')
   sender_id.append('<span class="buddyname">' + sender + '</span>')
   sender_id.append(time)
   sender_id.append(': ')
-  
+
   div.html(sender_id)
   div.append(message)
-  
+
   _append(div)
 }
 
 function audible_in(sender, url, message, timestamp) {
     var div = $('<div style="clear: both"></div>')
     div.attr('class', 'message audible_in')
-    
+
     _createAudible(div, sender, url, message, timestamp);
 }
 
 function audible_out(sender, url, message, timestamp) {
     var div = $('<div style="clear: both"></div>')
     div.attr('class', 'message audible_out')
-    
+
     _createAudible(div, sender, url, message, timestamp);
 }
 
@@ -171,21 +175,21 @@ function file_in(sender, files, sizes, transfer_id, icon) {
     var div = $('<div></div>')
     div.attr('class', 'file_in')
     div.attr('id', transfer_id)
-    
-    var imagediv = $('<div></div')
+
+    var imagediv = $('<div></div>')
     imagediv.attr('class', 'file_in_icon')
     imagediv.html('<img src="data:image/png;base64,' + icon + '"></img>')
     div.append(imagediv)
-    
+
     var is_images = true;
     var file_types;
-    
+
     for (filename in files) {
 	if (!files[filename].endsWith('.jpg') || !files[filename].endsWith('.jpeg') ||
 	  !files[filename].endsWith('.gif') || !files[filename].endsWith('.png'))
 	  is_images = false;
     }
-    
+
     if (is_images) {
       if (files.length == 1) {
 	file_types = 'photo';
@@ -199,12 +203,12 @@ function file_in(sender, files, sizes, transfer_id, icon) {
 	file_types = 'files';
       }
     }
-    
+
     var textdiv = $('<div></div>')
     textdiv.attr('class', 'file_in_text')
     textdiv.html('<span style="color: #77714a;"><b>' +
 	     sender + ' is sending you ' + files.length + ' ' + file_types + ':</b></span> ')
-    
+
     for (x = 0; x < files.length; x++) {
 	textdiv.html(textdiv.html() + files[x] + ' (' + _bytesToSize(sizes[x]) + ')' + '<br/>')
 	if (x > 5) {
@@ -223,7 +227,7 @@ function file_in(sender, files, sizes, transfer_id, icon) {
 	    break;
 	}
     }
-    
+
     if (files.length == 1) {
 	textdiv.html(textdiv.html() + '<b><a href="cyuf://save/' + transfer_id + '">Save...</a></b> (Alt+Shift+A) &nbsp;&nbsp;')
 	textdiv.html(textdiv.html() + '<b><a href="cyuf://decline/' + transfer_id + '">Decline</a></b> (Alt+Shift+D)')
@@ -231,9 +235,9 @@ function file_in(sender, files, sizes, transfer_id, icon) {
 	textdiv.html(textdiv.html() + '<b><a href="cyuf://save/' + transfer_id + '">Save All...</a></b> (Alt+Shift+A) &nbsp;&nbsp;')
 	textdiv.html(textdiv.html() + '<b><a href="cyuf://decline/' + transfer_id + '">Decline All</a></b> (Alt+Shift+D)')
     }
-    
+
     div.append(textdiv)
-    
+
     _append(div)
 }
 
@@ -291,7 +295,7 @@ function file_progress(transfer_id, filename, progress) {
 
 function transfer_finished(transfer_id, sender, count, action, path) {
     transfer_id = transfer_id.replace(/=/g, '\\=')
-    
+
     if (action == 'open-dir') {
         $('#' + transfer_id).attr('class', 'infobox')
         $('#' + transfer_id + ' .file_in_text').html(
@@ -301,22 +305,22 @@ function transfer_finished(transfer_id, sender, count, action, path) {
         $('#' + transfer_id).append($('<div></div>').css('clear', 'both'))
     } else if (action == 'open-file') {
         var is_photo = false;
-        
+
         if (path.endsWith('.jpg') || path.endsWith('.jpeg') ||
           path.endsWith('.gif') || path.endsWith('.png')) {
             is_photo = true;
           }
-        
+
         $('#' + transfer_id).attr('class', 'infobox')
         if (is_photo) {
             $('#' + transfer_id + ' .file_in_text').html(
-            '<span class="file_status_text">You have received ' + count + ' photo from ' + sender + '.</span><br/>' +
+            '<span class="info_text">You have received ' + count + ' photo from ' + sender + '.</span><br/>' +
             '<span class="standard_text_color">' + baseName(path) + '</span><br/>' +
             '<b><a href="cyuf://open-file/' + path + '">Open photo</a></b>'
             )
         } else {
             $('#' + transfer_id + ' .file_in_text').html(
-            '<span class="file_status_text">You have received ' + count + ' file from ' + sender + '.</span><br/>' +
+            '<span class="info_text">You have received ' + count + ' file from ' + sender + '.</span><br/>' +
             '<span class="standard_text_color">' + baseName(path) + '</span><br/>' +
             '<b><a href="cyuf://open-file/' + path + '">Open file</a></b>'
             )
@@ -324,22 +328,22 @@ function transfer_finished(transfer_id, sender, count, action, path) {
         $('#' + transfer_id).append($('<div></div>').css('clear', 'both'))
     } else if (action == 'file-sent') {
         var is_photo = false;
-        
+
         if (path.endsWith('.jpg') || path.endsWith('.jpeg') ||
           path.endsWith('.gif') || path.endsWith('.png')) {
             is_photo = true;
           }
-        
+
         $('#' + transfer_id).attr('class', 'infobox')
         if (is_photo) {
             $('#' + transfer_id + ' .file_in_text').html(
-            '<span class="file_status_text">You sent ' + count + ' photo to ' + sender + '.</span><br/>' +
+            '<span class="info_text">You sent ' + count + ' photo to ' + sender + '.</span><br/>' +
             '<span class="standard_text_color">' + baseName(path) + '</span><br/>' +
             '<b><a href="cyuf://open-file/' + path + '">Open photo</a></b>'
             )
         } else {
             $('#' + transfer_id + ' .file_in_text').html(
-            '<span class="file_status_text">You have received ' + count + ' file from ' + sender + '.</span><br/>' +
+            '<span class="info_text">You have received ' + count + ' file from ' + sender + '.</span><br/>' +
             '<span class="standard_text_color">' + baseName(path) + '</span><br/>' +
             '<b><a href="cyuf://open-file/' + path + '">Open file</a></b>'
             )
@@ -353,17 +357,17 @@ function file_out(receiver, files, sizes, transfer_id, icon) {
     var div = $('<div></div>')
     div.attr('class', 'file_in')
     div.attr('id', transfer_id)
-    
-    var imagediv = $('<div></div')
+
+    var imagediv = $('<div></div>')
     imagediv.attr('class', 'file_in_icon')
     imagediv.html('<img src="data:image/png;base64,' + icon + '"></img>')
     div.append(imagediv)
-    
+
     var textdiv = $('<div></div>')
     textdiv.attr('class', 'file_in_text')
     textdiv.html('<p style="color: #77714a; line-height:30%;"><b>' +
 	     'Waiting for ' + receiver + ' to accept ' + files.length + ' file(s):</b></p>')
-    
+
     for (x = 0; x < files.length; x++) {
 	textdiv.html(textdiv.html() + files[x] + ' (' + _bytesToSize(sizes[x]) + ')' + '<br/>')
 	if (x > 5) {
@@ -382,12 +386,49 @@ function file_out(receiver, files, sizes, transfer_id, icon) {
 	    break;
 	}
     }
-    
+
     textdiv.html(textdiv.html() + '<b><a href="cyuf://cancel-send/' + transfer_id + '">Cancel</a></b> (Alt+Shift+C) &nbsp;&nbsp;')
-    
+
     div.append(textdiv)
-    
+
     _append(div)
+}
+
+function webcam_invite(who) {
+    var div = $('<div></div>')
+    div.attr('class', 'infobox')
+    div.attr('id', 'webcam-invite-' + who)
+
+    var imagediv = $('<div></div>')
+    imagediv.attr('class', 'file_in_icon')
+    imagediv.html('<img src="res/camera-web.png"></img>')
+    div.append(imagediv)
+
+    div.html(div.html() + '<span class="info_text" id="webcam-invite-text-' + who + '">' +
+    'You have been invited to view ' + who + '&#39;s webcam. ' +
+    'Would you like to view this webcam?</span><br/>')
+    var buttons = $('<div></div>')
+    buttons.attr('id', 'webcam-invite-buttons-' + who)
+    buttons.html('<b><a href="cyuf://accept-web/' + who + '">Accept</a></b> (Alt+Shift+A) &nbsp;&nbsp;')
+    buttons.html(buttons.html() + '<b><a href="cyuf://decline-web/' + who + '">Decline</a></b> (Alt+Shift+D)')
+    div.append(buttons)
+    div.append($('<div></div>').css('clear', 'both'))
+
+    _append(div)
+}
+
+function webcam_accepted(who) {
+    var div_id = jQuerySelectorEscape('#webcam-invite-text-' + who)
+    var btns_id = jQuerySelectorEscape('#webcam-invite-buttons-' + who)
+    $(div_id).html('You have accepted the invitation to start webcam.')
+    $(btns_id).remove()
+}
+
+function webcam_declined(who) {
+    var div_id = jQuerySelectorEscape('#webcam-invite-text-' + who)
+    var btns_id = jQuerySelectorEscape('#webcam-invite-buttons-' + who)
+    $(div_id).html('You have declined the invitation to start webcam.')
+    $(btns_id).remove()
 }
 
 function start_typing(who) {

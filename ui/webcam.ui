@@ -7,11 +7,14 @@
     <x>0</x>
     <y>0</y>
     <width>328</width>
-    <height>348</height>
+    <height>331</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Webcam for Selena Gomez</string>
+  </property>
+  <property name="statusTip">
+   <string/>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
@@ -53,19 +56,6 @@
       </property>
       <property name="openExternalLinks">
        <bool>true</bool>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <widget class="QLabel" name="timestampLabel">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="text">
-       <string>Last image received</string>
       </property>
      </widget>
     </item>

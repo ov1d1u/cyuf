@@ -23,6 +23,11 @@ img {
   vertical-align: middle;
 }
 
+.info_text {
+    color: #5b7b96;
+    font-weight: bold;
+}
+
 .infobox .buddyname {
     font-weight: bold;
 }
@@ -98,11 +103,7 @@ img {
   margin-left: 40px;
 }
 
-.file_status_text {
-    color: #5b7b96;
-    font-weight: bold;
-}
-
 .file_in_icon {
   float: left;
+  padding-right: 5px;
 }

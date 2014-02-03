@@ -330,6 +330,7 @@ class BuddyList(QWidget, QObject):
         ym.register_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_REJECT, self.file_transfer_rejected)
         ym.register_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_UPLOAD, self.file_transfer_upload)
         ym.register_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_INFO, self.file_incoming_info)
+        ym.register_callback(cb.EMUSSA_CALLBACK_WEBCAM_INVITE, self.webcam_invite)
         ym.register_callback(cb.EMUSSA_CALLBACK_DISCONNECTED, self.disconnected)
         self.app.me.update_status.connect(self._update_myself)
         self.app.me.update_avatar.connect(self._update_myself)
@@ -1032,6 +1033,16 @@ class BuddyList(QWidget, QObject):
                         self.buddy_items[item.cybuddy.yahoo_id].widget
                     )
 
+    def webcam_invite(self, ym, w):
+        webcam_notification = cyemussa.CyWebcamNotify(w)
+        if webcam_notification.sender:
+            cybuddy = self._get_buddy(webcam_notification.sender)
+        else:
+            # still to be found
+            pass
+        chat = self._open_chat_for_buddy(cybuddy)
+        chat.webcam_invite(webcam_notification)
+
     def sign_out(self):
         ym.signout()
 
@@ -1057,7 +1068,8 @@ class BuddyList(QWidget, QObject):
         ym.unregister_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_REQUEST, self.file_incoming)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_CANCELLED, self.cancel_file_transfer)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_ACCEPT, self.file_transfer_accepted)
-        ym.register_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_REJECT, self.file_transfer_rejected)
+        ym.unregister_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_REJECT, self.file_transfer_rejected)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_UPLOAD, self.file_transfer_upload)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_FILE_TRANSFER_INFO, self.file_incoming_info)
+        ym.unregister_callback(cb.EMUSSA_CALLBACK_WEBCAM_INVITE, self.webcam_invite)
         ym.unregister_callback(cb.EMUSSA_CALLBACK_DISCONNECTED, self.disconnected)

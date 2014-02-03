@@ -77,7 +77,9 @@ class CyAvatar(im.DisplayImage, QObject):
             image = pixmap
         if px in self.sizes:
             return self.sizes[px]
-        scaled = image.scaled(QSize(px, px), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        scaled = image.scaled(QSize(px, px),
+                              Qt.KeepAspectRatio,
+                              Qt.SmoothTransformation)
         self.sizes[px] = scaled
         return scaled
 
@@ -216,3 +218,14 @@ class CyFileTransferInfo(im.FileTransferInfo, QObject):
 
     def __setattr__(self, name, value):
         super(CyFileTransferInfo, self).__setattr__(name, value)
+
+
+class CyWebcamNotify(im.WebcamNotify, QObject):
+    def __init__(self, file_transfer_info=None):
+        QObject.__init__(self)
+        super(CyWebcamNotify, self).__init__()
+        if file_transfer_info:
+            self.__dict__.update(file_transfer_info.__dict__)
+
+    def __setattr__(self, name, value):
+        super(CyWebcamNotify, self).__setattr__(name, value)

@@ -146,6 +146,17 @@ class ChatWidget(QWidget):
             if url.host() == 'open-file' or url.host() == 'open-dir':
                 QDesktopServices.openUrl(QUrl(url.path()))
 
+            if url.host() == 'decline-web':
+                yahoo_id = url.path()[1:]
+                self._javascript('webcam_declined', yahoo_id)
+                ym.deny_webcam_request(yahoo_id)
+
+            if url.host() == 'accept-web':
+                yahoo_id = url.path()[1:]
+                self._javascript('webcam_accepted', yahoo_id)
+                ym.accept_webcam_request(yahoo_id)
+                self.view_webcam()
+
 
     def _get_link_from_status(self):
         sep = ''
@@ -494,6 +505,12 @@ class ChatWidget(QWidget):
         self.uploader.upload(
             transfer_task.transfer_info.get_download_url(),
             filepath
+        )
+
+    def webcam_invite(self, webcam_notification):
+        self._javascript(
+            'webcam_invite',
+            webcam_notification.sender
         )
 
     def view_webcam(self):
