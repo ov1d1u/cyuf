@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>308</width>
+    <width>325</width>
     <height>607</height>
    </rect>
   </property>
@@ -34,41 +34,75 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>308</width>
-     <height>19</height>
+     <width>325</width>
+     <height>18</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuApplication">
     <property name="title">
-     <string>Messenger</string>
+     <string>Messe&amp;nger</string>
     </property>
-    <addaction name="actionSettings"/>
+    <addaction name="actionPreferences"/>
+    <addaction name="separator"/>
+    <addaction name="actionMyWebcam"/>
     <addaction name="separator"/>
     <addaction name="actionQuit"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
-     <string>Help</string>
+     <string>He&amp;lp</string>
     </property>
     <addaction name="actionAbout"/>
    </widget>
+   <widget class="QMenu" name="menuContacts">
+    <property name="title">
+     <string>&amp;Contacts</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="menuActions">
+    <property name="title">
+     <string>Actions</string>
+    </property>
+   </widget>
    <addaction name="menuApplication"/>
+   <addaction name="menuContacts"/>
+   <addaction name="menuActions"/>
    <addaction name="menuHelp"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <action name="actionSettings">
+  <action name="actionPreferences">
+   <property name="checkable">
+    <bool>false</bool>
+   </property>
    <property name="text">
-    <string>Settings</string>
+    <string>&amp;Preferences</string>
+   </property>
+   <property name="showWhenDisconnected" stdset="0">
+    <bool>true</bool>
    </property>
   </action>
   <action name="actionQuit">
    <property name="text">
-    <string>Quit</string>
+    <string>&amp;Quit</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::QuitRole</enum>
+   </property>
+   <property name="showWhenDisconnected" stdset="0">
+    <bool>true</bool>
    </property>
   </action>
   <action name="actionAbout">
    <property name="text">
-    <string>About</string>
+    <string>&amp;About</string>
+   </property>
+   <property name="showWhenDisconnected" stdset="0">
+    <bool>true</bool>
+   </property>
+  </action>
+  <action name="actionMyWebcam">
+   <property name="text">
+    <string>&amp;My Webcam</string>
    </property>
   </action>
  </widget>
@@ -78,7 +112,7 @@
  <connections>
   <connection>
    <sender>actionQuit</sender>
-   <signal>activated()</signal>
+   <signal>triggered()</signal>
    <receiver>MainWindow</receiver>
    <slot>close()</slot>
    <hints>

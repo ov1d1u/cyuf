@@ -1,7 +1,8 @@
 import sys
-from PyQt4 import uic
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from PyQt5 import uic
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 
 import cyemussa, settingsManager
 from libemussa import callbacks as cb
@@ -13,7 +14,7 @@ settings = settingsManager.Settings.Instance()
 
 class LoginWindow(QObject):
     def __init__(self, app):
-        QObject.__init__(app)
+        super(LoginWindow, self).__init__(app)
         self.app = app
         self.widget = uic.loadUi('ui/login.ui')
 

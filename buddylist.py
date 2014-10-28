@@ -1,8 +1,9 @@
 import sip
-from PyQt4 import uic
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-from PyQt4.QtNetwork import *
+from PyQt5 import uic
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtNetwork import *
+from PyQt5.QtWidgets import *
 
 import cyemussa, settingsManager
 from libemussa import callbacks as cb
@@ -10,6 +11,7 @@ from libemussa.const import *
 from add_buddy import AddBuddyWizard
 from auth_response_dialog import AuthResponseDialog
 from auth_request_dialog import AuthRequestDialog
+from my_webcam import MyWebcam
 import buddylist_rc, insider, chatwindow, avatar_menu
 
 ym = cyemussa.CyEmussa.Instance()
@@ -311,6 +313,7 @@ class BuddyList(QWidget, QObject):
         self.chat_windows = []
         self.last_group_received = None
         self.avatar_arrow = None
+        self.my_webcam = None
 
         ym.register_callback(cb.EMUSSA_CALLBACK_BUDDYLIST_RECEIVED, self._buddylist_received)
         ym.register_callback(cb.EMUSSA_CALLBACK_ADDRESSBOOK_RECEIVED, self.addressbook_recv)
@@ -336,7 +339,7 @@ class BuddyList(QWidget, QObject):
         self.app.me.update_avatar.connect(self._update_myself)
         self.widget.insiderButton.clicked.connect(self.show_insider)
         # old-style connect to force the calling of activated(QString), not activated(int)
-        self.widget.connect(self.widget.customStatusCombo, SIGNAL("activated(const QString&)"), self._set_status_text)
+        # TODO: FIX THIS self.widget.connect(self.widget.customStatusCombo, SIGNAL("activated(const QString&)"), self._set_status_text)
         self.widget.buddyTree.contextMenuEvent = self._buddylist_context_menu
         self.widget.buddyTree.itemDoubleClicked.connect(self.btree_open_chat)
         self.widget.buddyTree.itemCollapsed.connect(self._btree_expand_or_collapse)
@@ -1042,6 +1045,10 @@ class BuddyList(QWidget, QObject):
             pass
         chat = self._open_chat_for_buddy(cybuddy)
         chat.webcam_invite(webcam_notification)
+
+    def show_my_webcam(self):
+        self.my_webcam = MyWebcam(self.widget)
+        ym.start_webcam()
 
     def sign_out(self):
         ym.signout()

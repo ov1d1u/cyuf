@@ -1,7 +1,7 @@
-from PyQt4 import uic
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-from PyQt4.QtNetwork import *
+from PyQt5 import uic
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtNetwork import *
 from util import grayscale_pixmap
 
 from chatwidget import ChatWidget
@@ -20,6 +20,7 @@ class ChatWindow(QObject):
         self.widget.tabWidget.tabCloseRequested.connect(self.close_tab)
         self.widget.tabWidget.currentChanged.connect(self.change_tab)
         self.widget.viewWebcamMenu.triggered.connect(self.view_webcam)
+        self.widget.inviteWebcamMenu.triggered.connect(self.invite_webcam)
 
         self.current_buddy = cybuddy
         self.new_chat(cybuddy)
@@ -28,7 +29,8 @@ class ChatWindow(QObject):
         i = self.widget.tabWidget.indexOf(chat.widget)
         self.widget.tabWidget.setTabText(i, chat.cybuddy.display_name)
         if chat.cybuddy.status.online:
-            self.widget.tabWidget.setTabIcon(i, QIcon(chat.cybuddy.avatar.scaled(16)))
+            self.widget.tabWidget.\
+                setTabIcon(i, QIcon(chat.cybuddy.avatar.scaled(16)))
         else:
             self.widget.tabWidget.setTabIcon(
                 i, QIcon(grayscale_pixmap(chat.cybuddy.avatar.scaled(16)))
@@ -47,7 +49,8 @@ class ChatWindow(QObject):
     def new_chat(self, cybuddy):
         for chat in self.chatwidgets:
             if chat.cybuddy.yahoo_id == cybuddy.yahoo_id:
-                self.widget.tabWidget.setCurrentIndex(self.chatwidgets.index(chat))
+                self.widget.tabWidget.setCurrentIndex(
+                    self.chatwidgets.index(chat))
                 chat.widget.textEdit.setFocus(Qt.ActiveWindowFocusReason)
                 self.widget.activateWindow()
                 return
@@ -68,7 +71,9 @@ class ChatWindow(QObject):
     def change_tab(self, index):
         if index < len(self.chatwidgets):
             selected = self.chatwidgets[index]
-            self.widget.setWindowTitle('{0} - Cyuf'.format(selected.cybuddy.display_name))
+            self.widget.setWindowTitle(
+                '{0} - Cyuf'.format(selected.cybuddy.display_name)
+            )
             self.widget.setWindowIcon(QIcon(selected.cybuddy.avatar.image))
             self.current_buddy = selected.cybuddy
 
@@ -93,7 +98,11 @@ class ChatWindow(QObject):
     def focus_chat(self, cybuddy):
         for chat in self.chatwidgets:
             if chat.cybuddy.yahoo_id == cybuddy.yahoo_id:
-                self.widget.tabWidget.setCurrentIndex(self.chatwidgets.index(chat))
+                self.widget.tabWidget.\
+                    setCurrentIndex(self.chatwidgets.index(chat))
 
     def view_webcam(self):
         self.get_current_chat().view_webcam()
+
+    def invite_webcam(self):
+        self.get_current_chat().invite_webcam()

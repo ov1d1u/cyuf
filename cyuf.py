@@ -1,11 +1,13 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import sys
-from PyQt4 import uic
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from PyQt5 import uic
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 
 import cyemussa, loginui, buddylist, settingsManager
+from preferences import Preferences
 from libemussa import callbacks as cb
 settings = settingsManager.Settings.Instance()
 ym = cyemussa.CyEmussa.Instance()
@@ -13,7 +15,7 @@ ym = cyemussa.CyEmussa.Instance()
 QCoreApplication.setApplicationName("Cyuf Messenger")
 QCoreApplication.setOrganizationName("Ovidiu Nitan")
 QCoreApplication.setApplicationVersion("0.1 alpha")
-QDir().mkpath(QDesktopServices.storageLocation(QDesktopServices.DataLocation))
+QDir().mkpath(QStandardPaths.standardLocations(QStandardPaths.DataLocation)[0])
 
 
 class Cyuf(QObject):
@@ -33,6 +35,9 @@ class Cyuf(QObject):
 
     def main(self):
         self.mainw = uic.loadUi('ui/main.ui')
+        self.mainw.actionPreferences.triggered.connect(self.show_preferences)
+        self.mainw.actionMyWebcam.triggered.connect(self.show_my_webcam)
+
         self.mainw.setGeometry(settings.winrect)
         self.mainw.show()
         self.mainw.closeEvent = self.closeMainWindow
@@ -59,6 +64,14 @@ class Cyuf(QObject):
             self.buddylist.close()
         self.buddylist = buddylist.BuddyList(self)
         self.mainw.setCentralWidget(self.buddylist.widget)
+
+    def show_preferences(self):
+        self.preferences = Preferences(self.mainw)
+        self.preferences.populateCategories()
+
+    def show_my_webcam(self):
+        if self.buddylist:
+            self.buddylist.show_my_webcam()
 
     def disconnected(self, emussa=None):
         self.loginUI = loginui.LoginWindow(self)

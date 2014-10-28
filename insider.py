@@ -1,9 +1,9 @@
 import os
-from PyQt4 import uic, QtWebKit
-from PyQt4.QtWebKit import QWebPage, QWebView
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-from PyQt4.QtNetwork import *
+from PyQt5 import uic, QtWebKit
+from PyQt5.QtWebKitWidgets import QWebPage, QWebView
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtNetwork import *
 
 class InsiderWebPage(QWebPage):
     def acceptNavigationRequest(self, frame, req, nav_type):

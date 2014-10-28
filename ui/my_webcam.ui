@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>328</width>
+    <height>313</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>My Webcam</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="QLabel" name="webcamImageLabel">
+      <property name="minimumSize">
+       <size>
+        <width>320</width>
+        <height>240</height>
+       </size>
+      </property>
+      <property name="maximumSize">
+       <size>
+        <width>320</width>
+        <height>240</height>
+       </size>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color: black;</string>
+      </property>
+      <property name="text">
+       <string/>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="QPushButton" name="broadcastBtn">
+        <property name="text">
+         <string>Broadcast</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="pauseBtn">
+        <property name="text">
+         <string>Pause</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>328</width>
+     <height>19</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionPreferences"/>
+    <addaction name="actionChange_profile"/>
+    <addaction name="separator"/>
+    <addaction name="actionClose"/>
+   </widget>
+   <widget class="QMenu" name="menuWebcam">
+    <property name="title">
+     <string>Webcam</string>
+    </property>
+    <widget class="QMenu" name="menuImage_Size">
+     <property name="title">
+      <string>Image Size</string>
+     </property>
+     <addaction name="actionSmall"/>
+     <addaction name="actionLarge"/>
+    </widget>
+    <addaction name="actionAlways_on_top"/>
+    <addaction name="actionWho_s_Watching_Me"/>
+    <addaction name="menuImage_Size"/>
+    <addaction name="separator"/>
+    <addaction name="actionBroadcast"/>
+    <addaction name="actionPause"/>
+    <addaction name="separator"/>
+    <addaction name="actionStatistics"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="actionWebcam_help"/>
+    <addaction name="actionYahoo_Messenger_Help"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuWebcam"/>
+   <addaction name="menuHelp"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionPreferences">
+   <property name="text">
+    <string>Preferences</string>
+   </property>
+  </action>
+  <action name="actionChange_profile">
+   <property name="text">
+    <string>Change profile</string>
+   </property>
+  </action>
+  <action name="actionClose">
+   <property name="text">
+    <string>Close</string>
+   </property>
+  </action>
+  <action name="actionAlways_on_top">
+   <property name="text">
+    <string>Always on top</string>
+   </property>
+  </action>
+  <action name="actionWho_s_Watching_Me">
+   <property name="text">
+    <string>Who's Watching Me?</string>
+   </property>
+  </action>
+  <action name="actionSmall">
+   <property name="text">
+    <string>Small</string>
+   </property>
+  </action>
+  <action name="actionLarge">
+   <property name="text">
+    <string>Large</string>
+   </property>
+  </action>
+  <action name="actionBroadcast">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Broadcast</string>
+   </property>
+  </action>
+  <action name="actionPause">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Pause</string>
+   </property>
+  </action>
+  <action name="actionStatistics">
+   <property name="text">
+    <string>Statistics...</string>
+   </property>
+  </action>
+  <action name="actionWebcam_help">
+   <property name="text">
+    <string>Webcam Help</string>
+   </property>
+  </action>
+  <action name="actionYahoo_Messenger_Help">
+   <property name="text">
+    <string>Yahoo! Messenger Help</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

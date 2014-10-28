@@ -1,8 +1,8 @@
 import requests
 import threading, time
 from socket import socket
-from PyQt4.QtCore import *
-from PyQt4.QtNetwork import *
+from PyQt5.QtCore import *
+from PyQt5.QtNetwork import *
 
 import cyemussa
 ym = cyemussa.CyEmussa.Instance()
@@ -65,7 +65,7 @@ class FileDownloader(QObject):
         QObject.__init__(self)
         self.transfer_task = transfer_task
         self.filename = filename
-    
+
     def download(self, url):
         threading.Thread(target=self.do_download, args=(url, )).start()
 

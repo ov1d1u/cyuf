@@ -1,17 +1,22 @@
 import json
 import base64
-from PyQt4 import uic
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-from PyQt4.QtNetwork import *
-from PyQt4.QtWebKit import QWebSettings, QWebPage
+from PyQt5 import uic
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtNetwork import *
+from PyQt5.QtWebKit import QWebSettings
+from PyQt5.QtWebKitWidgets import QWebPage
+from PyQt5.QtWidgets import *
 
 import util
 from libemussa.const import *
 from libemussa import callbacks as cb
 from emotes import emotes
 from webcam_viewer import WebcamViewer
-import cyemussa, util, datetime, re
+import cyemussa
+import util
+import datetime
+import re
 from add_buddy import AddBuddyWizard
 from file_downloader import FileDownloader, FileUploader
 
@@ -23,7 +28,7 @@ class FileTransferTask:
         self.transfer_info = None
         self.destination = ''
         self.files = []
-        self.paths = [] # for remembering where we saved the downloaded files
+        self.paths = []  # for remembering where we saved the downloaded files
 
     def remove_file(self, filename):
         for f in self.files:
@@ -57,10 +62,12 @@ class ChatWidget(QWidget):
         self.widget.filetransfer_btn.clicked.connect(self._send_file)
         self.widget.myAvatar.setPixmap(self.app.me.avatar.image)
 
-        self.widget.messagesView.setUrl(QUrl('ui/resources/html/chat/index.html'))
+        self.widget.messagesView.setUrl(
+            QUrl('ui/resources/html/chat/index.html'))
         self.widget.messagesView.loadFinished.connect(self._document_ready)
         self.widget.messagesView.linkClicked.connect(self._link_clicked)
-        self.widget.messagesView.page().setLinkDelegationPolicy(QWebPage.DelegateAllLinks)
+        self.widget.messagesView.page().setLinkDelegationPolicy(
+            QWebPage.DelegateAllLinks)
         self.cybuddy.update.connect(self._update_buddy)
         self.cybuddy.update_status.connect(self._update_status)
         self.cybuddy.update_avatar.connect(self._update_avatar)
@@ -74,7 +81,8 @@ class ChatWidget(QWidget):
             self.widget.ignoreUserBtn.setHidden(True)
 
     def _javascript(self, function, *args):
-        # if the document is not ready, wait a while until we start calling JS functions on it
+        # if the document is not ready, wait a while until we start calling
+        # JS functions on it
         if not self.is_ready:
             self.queue.append([function, args])
         arguments_list = []
@@ -88,15 +96,14 @@ class ChatWidget(QWidget):
         self.is_ready = True
         if self.app.me.status.code == YAHOO_STATUS_INVISIBLE:
             pixmap = QPixmap(":status/resources/user-invisible.png")
-            self._add_info('You appear offline to <span class="buddyname">{0}</span>'.format(
-                self.cybuddy.display_name)
-            )
+            self._add_info('You appear offline to <span class="buddyname">'
+                           '{0}</span>'.format(self.cybuddy.display_name))
         elif not self.cybuddy.status.online:
             pixmap = QPixmap(":status/resources/user-offline.png")
-            self._add_info('<span class="buddyname">{0}</span> seems to be offline and will'
-                           'receive your messages next time when he/she logs in.'
-                           .format(self.cybuddy.display_name),
-                           pixmap)
+            self._add_info(
+                '<span class="buddyname">{0}</span> seems to be offline and '
+                'will receive your messages next time when he/she logs in.'
+                .format(self.cybuddy.display_name), pixmap)
 
         for task in self.queue:
             self._javascript(task[0], *task[1])
@@ -114,7 +121,8 @@ class ChatWidget(QWidget):
                     path = QFileDialog.getSaveFileName(
                         self.widget,
                         "Save file",
-                        "{0}/{1}".format(QDir.homePath(), transfer_task.files[0].filename),
+                        "{0}/{1}".format(QDir.homePath(),
+                                         transfer_task.files[0].filename),
                         "Any file (*.*)"
                     )
                 else:
@@ -157,7 +165,6 @@ class ChatWidget(QWidget):
                 ym.accept_webcam_request(yahoo_id)
                 self.view_webcam()
 
-
     def _get_link_from_status(self):
         sep = ''
         statusmsg = self.cybuddy.status.message
@@ -166,20 +173,24 @@ class ChatWidget(QWidget):
         if 'http://' in statusmsg:
             href = statusmsg[statusmsg.index('http://'):].split(' ', 1)[0]
             statusmsg = statusmsg.replace(href, '').lstrip().rstrip()
-            text = '<font color="#8C8C8C">{0}<a href="{1}">{2}</a></font>'.format(sep, href, statusmsg)
+            text = '<font color="#8C8C8C">{0}<a href="{1}">{2}</a></font>'\
+                .format(sep, href, statusmsg)
             return [href, text]
         elif 'https://' in statusmsg:
             href = statusmsg[statusmsg.index('https://'):].split(' ', 1)[0]
             statusmsg = statusmsg.replace(href, '').lstrip().rstrip()
-            text = '<font color="#8C8C8C">{0}<a href="{1}">{2}</a></font>'.format(sep, href, statusmsg)
+            text = '<font color="#8C8C8C">{0}<a href="{1}">{2}</a></font>'\
+                .format(sep, href, statusmsg)
             return [href, text]
         elif 'www.' in statusmsg:
             href = statusmsg[statusmsg.index('www.'):].split(' ', 1)[0]
             statusmsg = statusmsg.replace(href, '').lstrip().rstrip()
-            text = '<font color="#8C8C8C">{0}<a href="{1}">{2}</a></font>'.format(sep, href, statusmsg)
+            text = '<font color="#8C8C8C">{0}<a href="{1}">{2}</a></font>'\
+                .format(sep, href, statusmsg)
             return [href, text]
         else:
-            text = '<font color="#8C8C8C">{0}{1}</font>'.format(sep, self.cybuddy.status.message)
+            text = '<font color="#8C8C8C">{0}{1}</font>'\
+                .format(sep, self.cybuddy.status.message)
             return ['', text]
 
     def _update_buddy(self):
@@ -189,22 +200,26 @@ class ChatWidget(QWidget):
     def _update_status(self):
         if self.cybuddy.status.online:
             if self.cybuddy.status.idle_time:
-                self.widget.contactStatus.setPixmap(QPixmap(":status/resources/user-away.png"))
+                self.widget.contactStatus.setPixmap(
+                    QPixmap(":status/resources/user-away.png"))
                 if self.sender().__class__.__name__ == 'CyBuddy':
                     self._notify_status('is Idle.')
             elif self.cybuddy.status.code == YAHOO_STATUS_BUSY:
-                self.widget.contactStatus.setPixmap(QPixmap(":status/resources/user-busy.png"))
+                self.widget.contactStatus.setPixmap(
+                    QPixmap(":status/resources/user-busy.png"))
                 if self.sender().__class__.__name__ == 'CyBuddy':
                     self._notify_status('is Busy.')
             else:
-                self.widget.contactStatus.setPixmap(QPixmap(":status/resources/user-online.png"))
+                self.widget.contactStatus.setPixmap(
+                    QPixmap(":status/resources/user-online.png"))
                 if self.sender().__class__.__name__ == 'CyBuddy':
                     self._notify_status('is now Available.')
             statusMsg = self._get_link_from_status()
             self.widget.contactStatusText.setText(statusMsg[1])
             self.widget.contactStatusText.setToolTip(statusMsg[0])
         else:
-            self.widget.contactStatus.setPixmap(QPixmap(":status/resources/user-offline.png"))
+            self.widget.contactStatus.setPixmap(
+                QPixmap(":status/resources/user-offline.png"))
             self.widget.contactStatusText.setText('')
             self.widget.contactStatusText.setToolTip('')
             if self.sender().__class__.__name__ == 'CyBuddy':
@@ -214,7 +229,8 @@ class ChatWidget(QWidget):
         self._javascript('status_updated',
                          '<span class="buddy_items">{0}</span> {1}'
                          .format(self.cybuddy.display_name, message),
-                         util.pixmap_to_base64(self.widget.contactStatus.pixmap()),
+                         util.pixmap_to_base64(
+                             self.widget.contactStatus.pixmap()),
                          datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
     def _update_avatar(self):
@@ -240,7 +256,8 @@ class ChatWidget(QWidget):
         if not sender:
             # we are typing this from somewhere else
             sender = self.app.me.yahoo_id
-        if not sender == self.app.me.yahoo_id and not sender == self.cybuddy.yahoo_id:
+        if not sender == self.app.me.yahoo_id\
+           and not sender == self.cybuddy.yahoo_id:
             return
         if tn.status:
             self._javascript('start_typing', sender)
@@ -263,7 +280,11 @@ class ChatWidget(QWidget):
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         self.widget.textEdit.setDocument(QTextDocument())
         ym.send_message(self.cybuddy.yahoo_id, str(raw_msg))
-        self._javascript('message_out', self.app.me.yahoo_id, self._text_to_emotes(raw_msg), timestamp)
+        self._javascript(
+            'message_out',
+            self.app.me.yahoo_id,
+            self._text_to_emotes(raw_msg),
+            timestamp)
 
     def _send_file(self):
         files = QFileDialog.getOpenFileNames(
@@ -294,7 +315,8 @@ class ChatWidget(QWidget):
             files_absolute.append(QFileInfo(f.filename).fileName())
             sizes.append(f.filesize)
 
-        self.transfer_tasks[transfer_task.transfer_info.transfer_id] = transfer_task
+        self.transfer_tasks[transfer_task.transfer_info.transfer_id] =\
+            transfer_task
         thumbnail = None
 
         if len(files) == 1 and QImageReader.imageFormat(files[0]):
@@ -326,8 +348,9 @@ class ChatWidget(QWidget):
         for i, w in enumerate(words):
             for emo in emotes:
                 pattern = re.compile(re.escape(emo), re.IGNORECASE)
-                word = pattern.sub('<img src="{0}" alt="{1}" />'.format(emotes[emo], emo), w)
-                if not word == w:           # a replacement was made, skip to the next word
+                word = pattern.sub('<img src="{0}" alt="{1}" />'.format(
+                    emotes[emo], emo), w)
+                if not word == w:  # a replacement was made, skip
                     words[i] = word
                     break
         text = ' '.join(words)
@@ -389,8 +412,13 @@ class ChatWidget(QWidget):
         if cymessage.offline:
             message = '(offline) {0}'.format(message)
         if cymessage.timestamp:
-            timestamp = datetime.datetime.fromtimestamp(int(cymessage.timestamp)).strftime('%Y-%m-%d %H:%M:%S')
-        self._javascript('message_in', sender, self._text_to_emotes(util.sanitize_html(message)), timestamp)
+            timestamp = datetime.datetime.fromtimestamp(
+                int(cymessage.timestamp)).strftime('%Y-%m-%d %H:%M:%S')
+        self._javascript(
+            'message_in',
+            sender,
+            self._text_to_emotes(util.sanitize_html(message)),
+            timestamp)
 
     def receive_file_transfer(self, cyfiletransfer):
         files = []
@@ -436,7 +464,8 @@ class ChatWidget(QWidget):
             transfer_task = self.transfer_tasks[cyftinfo.transfer_id]
             finfo = QFileInfo(transfer_task.destination)
             if finfo.isDir():
-                path = '{0}/{1}'.format(transfer_task.destination, cyftinfo.filename)
+                path = '{0}/{1}'.format(transfer_task.destination,
+                                        cyftinfo.filename)
             else:
                 path = '{0}'.format(transfer_task.destination)
 
@@ -444,7 +473,9 @@ class ChatWidget(QWidget):
             transfer_task.remove_file(cyftinfo.filename)
             transfer_task.paths.append(path)
 
-            self._download_progress(cyftinfo.transfer_id, cyftinfo.filename, 0.0)
+            self._download_progress(cyftinfo.transfer_id,
+                                    cyftinfo.filename,
+                                    0.0)
 
             self.downloader = FileDownloader(transfer_task, path)
             self.downloader.progress.connect(self._download_progress)
@@ -517,12 +548,17 @@ class ChatWidget(QWidget):
         ym.send_webcam_request(self.cybuddy.yahoo_id)
         self.webcam_viewer = WebcamViewer(self)
 
+    def invite_webcam(self):
+        pass
+
     def receive_audible(self, audible):
         self.audible = audible
         self.manager = QNetworkAccessManager()
         self.manager.finished.connect(self.post_audible)
         self.req = QNetworkRequest(QUrl(self.audible.url))
-        self.req.setRawHeader('User-agent', 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US)')
+        self.req.setRawHeader(
+            'User-agent',
+            'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US)')
         self.reply = self.manager.get(self.req)
 
     def post_audible(self, swfdata):
@@ -531,4 +567,9 @@ class ChatWidget(QWidget):
             tmpfile.write(swfdata.readAll())
             tmpfile.close()
             timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            self._javascript('audible_in', self.audible.sender, tmpfile.fileName(), self.audible.message, timestamp)
+            self._javascript(
+                'audible_in',
+                self.audible.sender,
+                tmpfile.fileName(),
+                self.audible.message,
+                timestamp)

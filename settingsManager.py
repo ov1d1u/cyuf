@@ -1,10 +1,12 @@
 from singleton import Singleton
-from PyQt4.QtCore import *
+from PyQt5.QtCore import *
+
 
 @Singleton
 class Settings:
     keys = {}
     settings = QSettings('Cyuf', 'Cyuf Messenger')
+
     def __init__(self):
         self._set_defaults()
         self._load_settings()
@@ -13,9 +15,9 @@ class Settings:
         self.keys[name] = value
         self.settings.setValue(name, value)
 
-    def __getattr__(self, name):
+    def __getattr__(self, name, default=None):
         try:
-            return object.__getattribute__(self, name)
+            return object.__getattribute__(self, name, default)
         except:
             if name in self.keys:
                 if self.keys[name] in ['true', True]:
@@ -24,13 +26,20 @@ class Settings:
                     return False
                 return self.keys[name]
             else:
-                return None
+                print('{0} not found, returning default ({1})'.format(name, default))
+                return default
+
+    def get(self, name, default=None):
+        return self.__getattr__(name, default)
 
     def _load_settings(self):
-        for key in self.keys:
+        for key in self.settings.allKeys():
             value = self.settings.value(key)
             if value:
+                print('self.keys[{0}] = {1}'.format(key, value))
                 self.keys[key] = value
+            else:
+                print('HURR')
 
     def _set_defaults(self):
         self.keys['winrect'] = QRect(QPoint(0, 0), QSize(308, 607))

@@ -63,7 +63,7 @@
       <string>More Actions</string>
      </property>
      <addaction name="viewWebcamMenu"/>
-     <addaction name="actionInvite_to_View_My_Webcam"/>
+     <addaction name="inviteWebcamMenu"/>
     </widget>
     <addaction name="menuMore_Actions"/>
    </widget>
@@ -101,7 +101,7 @@
     <string>View webcam...</string>
    </property>
   </action>
-  <action name="actionInvite_to_View_My_Webcam">
+  <action name="inviteWebcamMenu">
    <property name="text">
     <string>Invite to View My Webcam</string>
    </property>
