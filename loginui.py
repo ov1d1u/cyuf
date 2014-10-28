@@ -13,7 +13,7 @@ settings = settingsManager.Settings.Instance()
 
 class LoginWindow(QObject):
     def __init__(self, app):
-        QObject.__init__(app)
+        super(LoginWindow, self).__init__(app)
         self.app = app
         self.widget = uic.loadUi('ui/login.ui')
 
